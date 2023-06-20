@@ -1,7 +1,11 @@
 [package]
 name = "libfprint-sys"
+repository = "https://github.com/alvaroparker/libfprint-rs"
 version = "0.1.0"
 edition = "2021"
+description = "Libfprint raw FFI bindings."
+keywords = ["libfprint", "sensor", "hardware", "linux"]
+licenses = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
