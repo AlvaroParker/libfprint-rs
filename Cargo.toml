@@ -5,11 +5,14 @@ version = "0.1.0"
 edition = "2021"
 description = "Rust library for accesing fingerprint devices."
 keywords = ["libfprint", "sensor", "hardware", "linux"]
-licenses = "MIT"
+license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 libfprint-sys = { version = "0.1.0", path = "libfprint-sys" }
+
+[workspace]
+members = ["libfprint-sys"]
 
 [build-dependencies]
 bindgen = "0.65.1"
