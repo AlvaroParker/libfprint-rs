@@ -2,7 +2,7 @@
 This crate provides a wrapper around the native `libfprint` library. 
 
 ## Dependencies
-This package require `libfprint-2` to be installed in your system alongside `glib-2`, `libclang` and `pkg-config`
+This package requires `libfprint-2` to be installed in your system alongside `glib-2`, `libclang` and `pkg-config`
 
 ## Usage
 Add `libfprint-rs` as a dependency in `Cargo.toml`
