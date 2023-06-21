@@ -9,7 +9,7 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libfprint-sys = { version = "0.1.0", path = "libfprint-sys" }
+libfprint-sys = "0.1.2"
 
 [workspace]
 members = ["libfprint-sys"]
