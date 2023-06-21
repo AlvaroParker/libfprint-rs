@@ -1,4 +1,6 @@
 use crate::context::FpContext;
+use std::error::Error;
+use std::fmt::Display;
 use std::marker::PhantomData;
 use std::rc::Rc;
 
@@ -48,6 +50,42 @@ pub enum FpDeviceFeature {
     /// Supports updating an existing print record using new scans
     UpdatePrint = 512,
 }
+#[derive(Debug, Clone, Copy)]
+pub enum ParseError {
+    InvalidFormat,
+    Overflow,
+}
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ParseError::InvalidFormat => write!(f, "Invalid format"),
+            ParseError::Overflow => write!(f, "Overflow"),
+        }
+    }
+}
+
+impl Error for ParseError {}
+
+impl TryFrom<u32> for FpDeviceFeature {
+    type Error = ParseError;
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(FpDeviceFeature::None),
+            1 => Ok(FpDeviceFeature::Capture),
+            2 => Ok(FpDeviceFeature::Identify),
+            4 => Ok(FpDeviceFeature::Verify),
+            8 => Ok(FpDeviceFeature::Storage),
+            16 => Ok(FpDeviceFeature::StorageList),
+            32 => Ok(FpDeviceFeature::StorageDelete),
+            64 => Ok(FpDeviceFeature::StorageClear),
+            128 => Ok(FpDeviceFeature::DuplicatesCheck),
+            256 => Ok(FpDeviceFeature::AlwaysOn),
+            512 => Ok(FpDeviceFeature::UpdatePrint),
+            _ => Err(ParseError::Overflow),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum FpScanType {
@@ -64,3 +102,35 @@ impl From<u32> for FpScanType {
         }
     }
 }
+
+macro_rules! fn_pointer {
+    ($function:ident, $struct:ident) => {{
+        let ptr: *mut std::ffi::c_void = match $function {
+            Some(cb) => {
+                let data = UserData {
+                    function: cb,
+                    data: $struct,
+                };
+                let boxed = std::boxed::Box::new(data);
+                std::boxed::Box::into_raw(boxed).cast()
+            }
+            None => std::ptr::null_mut(),
+        };
+        ptr
+    }};
+}
+
+macro_rules! return_sucess {
+    ($res:ident, $ptr: ident) => {{
+        let res: i32 = $res;
+        let ptr: *mut libfprint_sys::_GError = $ptr;
+        if res == 1 {
+            Ok(())
+        } else {
+            Err(unsafe { crate::error::from_libfprint_static(ptr) })
+        }
+    }};
+}
+
+pub(crate) use fn_pointer;
+pub(crate) use return_sucess;

@@ -57,13 +57,21 @@ mod tests {
     #[test]
     fn ident_test() {
         let ctx = FpContext::new();
-        let dev = ctx.get_devices().iter().next().unwrap(); // Throws errors if no device is connected
+        let dev = match ctx.get_devices().iter().next() {
+            Some(dev) => dev,
+            None => {
+                return;
+            }
+        }; // Throws errors if no device is connected
+        let f = dev.get_features();
+        println!("{:?}", f);
 
         dev.open().unwrap(); // Open the device
 
         let prints = vec![generate_print(&dev), generate_print(&dev)];
 
         let mut matched_print = FpPrint::new(&dev);
+        matched_print.set_username("Some username should be here");
         let mut new_print = FpPrint::new(&dev);
 
         dev.identify(

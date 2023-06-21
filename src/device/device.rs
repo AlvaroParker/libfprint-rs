@@ -1,13 +1,3 @@
-/*
-# Not added
-FpDeviceFeature 	fp_device_get_features ()
-gboolean 	fp_device_identify_sync ()
-
-# Added but todo!
-gboolean 	fp_device_verify_sync ()
-GPtrArray * 	fp_device_list_prints_sync ()
-*/
-
 use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
 pub type FpEnrollProgress<T> = fn(&FpDevice, i32, FpPrint, Option<GError>, &mut Option<T>) -> ();
@@ -16,7 +6,7 @@ pub type FpMatchCb<T> = fn(&FpDevice, Option<FpPrint>, FpPrint, Option<GError>, 
 use crate::{
     context::FpContext,
     device::FpDeviceFeature,
-    device::FpScanType,
+    device::{fn_pointer, return_sucess, FpScanType},
     error::{self, GError},
     finger::FpFingerStatusFlags,
     image::FpImage,
@@ -65,22 +55,13 @@ impl<'a> FpDevice<'a> {
         new_print: Option<&mut FpPrint>,
     ) -> Result<(), GError<'static>> {
         // Create pointer to callback function
-        let ptr_cb = match callback_fn {
-            Some(cb) => {
-                let data = UserData {
-                    function: cb,
-                    data: user_data,
-                };
-                let boxed = Box::new(data);
-                Box::into_raw(boxed).cast()
-            }
-            None => std::ptr::null_mut(),
-        };
+        let fn_pointer = fn_pointer!(callback_fn, user_data);
 
         // Create array of pointers
-        let ptr_arr: libfprint_sys::GPtrArray_autoptr = unsafe { libfprint_sys::g_ptr_array_new() }; // Autoptr GArray
+        let prints_arr: libfprint_sys::GPtrArray_autoptr =
+            unsafe { libfprint_sys::g_ptr_array_new() }; // Autoptr GArray
         prints.iter_mut().for_each(|print| unsafe {
-            libfprint_sys::g_ptr_array_add(ptr_arr, (*print.print.borrow()).cast())
+            libfprint_sys::g_ptr_array_add(prints_arr, (*print.print.borrow()).cast())
         });
 
         // Create gerror
@@ -93,13 +74,13 @@ impl<'a> FpDevice<'a> {
         let new_print_raw = get_print_ptr(new_print);
 
         // Call the function with the given arguments
-        unsafe {
+        let res = unsafe {
             libfprint_sys::fp_device_identify_sync(
                 *self.device,
-                ptr_arr,
+                prints_arr,
                 std::ptr::null_mut(),
                 Some(fp_match_cb::<FpMatchCb<T>, T>),
-                ptr_cb,
+                fn_pointer,
                 matched_print_raw.cast(),
                 new_print_raw.cast(),
                 std::ptr::addr_of_mut!(gerror),
@@ -107,14 +88,10 @@ impl<'a> FpDevice<'a> {
         };
 
         // Cleanup
-        unsafe { libfprint_sys::g_ptr_array_free(ptr_arr.cast(), 1) };
+        unsafe { libfprint_sys::g_ptr_array_free(prints_arr.cast(), 1) };
 
         // Return Ok or Err if error
-        if gerror.is_null() {
-            Ok(())
-        } else {
-            Err(unsafe { error::from_libfprint_static(gerror) })
-        }
+        return_sucess!(res, gerror)
     }
     /// Returns the name of the device.
     pub fn get_name(&self) -> &str {
@@ -131,11 +108,8 @@ impl<'a> FpDevice<'a> {
                 std::ptr::addr_of_mut!(gerror),
             )
         };
-        if res == 1 {
-            Ok(())
-        } else {
-            Err(unsafe { error::from_libfprint_static(gerror) })
-        }
+
+        return_sucess!(res, gerror)
     }
     /// Close the device.
     pub fn close(&self) -> Result<(), GError<'static>> {
@@ -147,12 +121,9 @@ impl<'a> FpDevice<'a> {
                 std::ptr::addr_of_mut!(gerror),
             )
         };
-        if res == 1 {
-            Ok(())
-        } else {
-            Err(unsafe { error::from_libfprint_static(gerror) })
-        }
+        return_sucess!(res, gerror)
     }
+    #[cfg(not(doctest))]
     /// Enroll a new print. Template print is a print with relevant metadata filled in.
     /// # Example:
     /// ```
@@ -184,21 +155,13 @@ impl<'a> FpDevice<'a> {
         callback_fn: Option<FpEnrollProgress<T>>,
         user_data: Option<T>,
     ) -> Result<FpPrint<'static>, GError<'static>> {
-        let (ptr, ptr_clone) = match callback_fn {
-            Some(cb) => {
-                let data = UserData {
-                    function: cb,
-                    data: user_data,
-                };
-                let boxed = Box::new(data);
-                let ptr = Box::into_raw(boxed);
-                (ptr, ptr.clone())
-            }
-            None => (std::ptr::null_mut(), std::ptr::null_mut()),
-        };
+        // Get the raw pointer function, or pointer to Null if None
+        let ptr = fn_pointer!(callback_fn, user_data);
+        let ptr_clone = ptr.clone();
 
+        // New error pointer to store possible errrors
         let mut gerror = std::ptr::null_mut();
-        // let template = template_print.print;
+        // Start enroll asign to raw_print variable
         let raw_print = unsafe {
             libfprint_sys::fp_device_enroll_sync(
                 *self.device,
@@ -209,7 +172,6 @@ impl<'a> FpDevice<'a> {
                 std::ptr::addr_of_mut!(gerror),
             )
         };
-        // println!("{:p}", ptr_clone);
         if !ptr_clone.is_null() {
             let boxed = unsafe { Box::from_raw(ptr_clone) };
             drop(boxed);
@@ -256,19 +218,8 @@ impl<'a> FpDevice<'a> {
         callback_fn: Option<FpMatchCb<T>>,
         match_data: Option<T>,
         scanned_print: Option<&mut FpPrint>,
-    ) -> Result<bool, GError<'static>> {
-        let ptr = match callback_fn {
-            Some(cb) => {
-                let data = UserData {
-                    function: cb,
-                    data: match_data,
-                };
-                let boxed = Box::new(data);
-                let ptr = Box::into_raw(boxed);
-                ptr
-            }
-            None => std::ptr::null_mut(),
-        };
+    ) -> Result<(), GError<'static>> {
+        let ptr = fn_pointer!(callback_fn, match_data);
 
         let mut gerror = std::ptr::null_mut();
         let mut matched = 0;
@@ -287,11 +238,7 @@ impl<'a> FpDevice<'a> {
                 std::ptr::addr_of_mut!(gerror),
             )
         };
-        if res == 1 {
-            return Ok(matched == 1);
-        } else {
-            Err(unsafe { error::from_libfprint_static(gerror) })
-        }
+        return_sucess!(res, gerror)
     }
     /// Start operation to capture an image.
     pub fn capture(&self) -> Result<FpImage, GError<'static>> {
@@ -319,8 +266,22 @@ impl<'a> FpDevice<'a> {
         let status_raw = unsafe { libfprint_sys::fp_device_get_finger_status(*self.device) };
         FpFingerStatusFlags::from(status_raw)
     }
-    pub fn get_features(&self) {
-        todo!()
+    pub fn get_features(&self) -> Vec<FpDeviceFeature> {
+        let mut features = Vec::new();
+        let x = unsafe { libfprint_sys::fp_device_get_features(*self.device) };
+        if x == 0 {
+            return vec![FpDeviceFeature::None];
+        } else {
+            (0..31).for_each(|i| {
+                let mask = 1 << i;
+                if (mask & x) > 0 {
+                    if let Ok(feature) = FpDeviceFeature::try_from(2_u32.pow(i)) {
+                        features.push(feature);
+                    }
+                }
+            });
+        }
+        features
     }
     pub fn get_driver(&self) -> &str {
         let raw_str = unsafe { libfprint_sys::fp_device_get_driver(*self.device) };
@@ -339,21 +300,13 @@ impl<'a> FpDevice<'a> {
     #[cfg(target_arch = "x86_64")]
     pub fn has_feature(&self, features: FpDeviceFeature) -> bool {
         let res = unsafe { libfprint_sys::fp_device_has_feature(*self.device, features as u32) };
-        if res == 1 {
-            true
-        } else {
-            false
-        }
+        res == 1
     }
     // response of gboolean are equivalent to true if they are 1, else they are false (usually 0)
     // todo: check the docs for if this is stable
     pub fn is_open(&self) -> bool {
         let res = unsafe { libfprint_sys::fp_device_is_open(*self.device) };
-        if res == 1 {
-            true
-        } else {
-            false
-        }
+        res == 1
     }
     // todo: check if this is true lol:
     /// Delete a print from the device. This only makes sense on devices that store prints on-chip, but is safe to always call.
@@ -367,11 +320,7 @@ impl<'a> FpDevice<'a> {
                 std::ptr::addr_of_mut!(raw_error),
             )
         };
-        if res == 1 {
-            Ok(())
-        } else {
-            Err(unsafe { error::from_libfprint_static(raw_error) })
-        }
+        return_sucess!(res, raw_error)
     }
     pub fn list_prints(&self) {
         todo!();
@@ -387,11 +336,7 @@ impl<'a> FpDevice<'a> {
                 std::ptr::addr_of_mut!(raw_error),
             )
         };
-        if res == 1 {
-            Ok(())
-        } else {
-            Err(unsafe { error::from_libfprint_static(raw_error) })
-        }
+        return_sucess!(res, raw_error)
     }
     /// Prepare device for suspend.
     #[cfg(target_arch = "x86_64")]
@@ -404,11 +349,7 @@ impl<'a> FpDevice<'a> {
                 std::ptr::addr_of_mut!(raw_error),
             )
         };
-        if res == 1 {
-            Ok(())
-        } else {
-            Err(unsafe { error::from_libfprint_static(raw_error) })
-        }
+        return_sucess!(res, raw_error)
     }
 
     /// Resume device after suspend.
@@ -422,11 +363,7 @@ impl<'a> FpDevice<'a> {
                 std::ptr::addr_of_mut!(raw_error),
             )
         };
-        if res == 1 {
-            Ok(())
-        } else {
-            Err(unsafe { error::from_libfprint_static(raw_error) })
-        }
+        return_sucess!(res, raw_error)
     }
 }
 
