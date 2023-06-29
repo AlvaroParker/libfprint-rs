@@ -1,3 +1,5 @@
+/// Enum representing a finger. This can be used to specify which finger was used to enroll a new print and can be added as part of the
+/// print metadata.
 #[derive(Debug)]
 pub enum Finger {
     Unknown = libfprint_sys::FpFinger_FP_FINGER_UNKNOWN as isize,

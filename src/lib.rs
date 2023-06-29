@@ -1,13 +1,57 @@
-pub mod context;
-pub mod device;
-pub mod error;
-pub mod finger;
-pub mod image;
-pub mod print;
+//! Rust bindings for [libfprint](https://gitlab.freedesktop.org/libfprint/libfprint)
+//!
+//! This crate provides a wrapper around the libfprint library, which allows you to use fingerprint scanners in your Rust applications.
+//!
+//! ## Enrolling a new fingerprint
+//! ```rust
+//! use libfprint_rs::{FpContext, FpPrint, GError};
+//!
+//! let context = FpContext::new();
+//! let devices = context.get_devices();
+//!
+//! let dev = devices.iter().next().unwrap();
+//! dev.open()?;
+//!
+//! let template = FpPrint::new(&dev);
+//! template.set_username("Bruce Banner");
+//!
+//! dev.enroll(template, None, None::<()>)?;
+//! ```
+//! ## Verifying a fingerprint
+//! ```rust
+//! use libfprint_rs::{FpContext, FpPrint, GError};
+//! let context = FpContext::new();
+//! let devices = context.get_devices();
+//!
+//! let dev = devices.iter().next().unwrap();
+//! dev.open()?;
+//!
+//! let enrolled_print = load_print_from_file();
+//!
+//! dev.verify(enrolled_print, None, None::<()>, None)?;
+//! ```
+mod context;
+mod device;
+mod error;
+mod finger;
+mod image;
+mod print;
 pub(crate) mod utils;
+
+pub use crate::{
+    context::FpContext,
+    // import all from device mod
+    device::*,
+    error::{GError, GErrorSource},
+    finger::{Finger, FpFingerStatusFlags},
+    image::{FpImage, FpImageData},
+    print::{FpPrint, SerializedPrint},
+};
 
 #[cfg(test)]
 mod tests {
+
+    use std::{cell::RefCell, rc::Rc};
 
     use crate::{context::FpContext, device::FpDevice, error::GError, print::FpPrint};
     struct UserData {
@@ -15,17 +59,19 @@ mod tests {
         _name: String,
     }
     fn generate_print<'a>(dev: &'a FpDevice) -> FpPrint<'a> {
-        let mut user_data = UserData {
+        let user_data = UserData {
             _count: 304,
             _name: "Donda".into(),
         };
 
+        let user_data = Rc::new(RefCell::new(user_data));
+
         let template = FpPrint::new(&dev);
         let print1 = dev
-            .enroll(template, Some(callback_fn), Some(&mut user_data))
+            .enroll(template, Some(callback_fn), Some(user_data.clone()))
             .unwrap();
-        let print2 = print1.clone();
-        drop(print2);
+        println!("{}", user_data.borrow()._count);
+
         return print1;
     }
 
@@ -34,8 +80,12 @@ mod tests {
         completed_stages: i32,
         _print: FpPrint,
         _error: Option<GError>,
-        _user_data: &mut Option<&mut UserData>,
+        _user_data: &Option<Rc<RefCell<UserData>>>,
     ) {
+        if let Some(user_data) = _user_data {
+            user_data.borrow_mut()._count += 1;
+            // Mutate the user data
+        }
         println!(
             "Enrolling: {} of {}",
             completed_stages,
@@ -43,17 +93,22 @@ mod tests {
         );
     }
 
-    fn callback_function(
-        _device: &FpDevice,             // The fingerprint scanner device
-        matched_print: Option<FpPrint>, // The matched print, if any.
-        _new_print: FpPrint,            // New print scanned.
-        _error: Option<GError>,         // Optinal error in case of an error.
-        _match_data: &Option<()>,       // User data can be any data type.
+    fn match_cb_function(
+        _device: &FpDevice,                         // The fingerprint scanner device
+        matched_print: Option<FpPrint>,             // The matched print, if any.
+        _new_print: FpPrint,                        // New print scanned.
+        _error: Option<GError>,                     // Optinal error in case of an error.
+        match_data: &Option<Rc<RefCell<UserData>>>, // User data can be any data type.
     ) {
+        if let Some(user_data) = match_data {
+            user_data.borrow_mut()._count += 1;
+            user_data.borrow_mut()._name = "Kanye".into();
+        }
         if matched_print.is_some() {
             println!("Found matched print!");
         }
     }
+    #[test]
     fn ident_test() {
         let ctx = FpContext::new();
         let dev = match ctx.get_devices().iter().next() {
@@ -75,7 +130,7 @@ mod tests {
 
         dev.identify(
             prints,
-            Some(callback_function),
+            Some(match_cb_function),
             None,
             Some(&mut matched_print),
             Some(&mut new_print),

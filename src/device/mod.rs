@@ -4,8 +4,6 @@ use std::fmt::Display;
 use std::marker::PhantomData;
 use std::rc::Rc;
 
-pub use crate::device::device_list::{DeviceList, Devices};
-
 pub(crate) mod device;
 pub(crate) mod device_list;
 mod extern_fn;
@@ -13,7 +11,23 @@ mod user_data;
 
 pub use crate::device::device::FpEnrollProgress;
 pub use crate::device::device::FpMatchCb;
+pub use crate::device_list::{DeviceList, Devices};
 
+/// Fingerpint device routines
+///
+/// These struct will allow you to interact with the fingerprint device.
+/// # Examples:
+/// ```rust
+/// use libfprint_rs::FpContext;
+///
+/// let context = FpContext::new();
+/// let devices = context.get_devices();
+/// let device = devices.iter().next().unwrap();
+///
+/// device.open().unwrap();
+/// let name = device.get_name().unwrap();
+/// println!("Device name: {}", name);
+/// ```
 #[derive(Clone)]
 pub struct FpDevice<'a> {
     pub(crate) context: PhantomData<&'a FpContext>,
@@ -25,6 +39,8 @@ pub(crate) struct UserData<F, T> {
     data: Option<T>,
 }
 
+/// Enum representing the different features that a device may support.
+/// This is used to query the device capabilities.
 #[derive(Debug, Clone, Copy)]
 pub enum FpDeviceFeature {
     /// Device does not support any feature
@@ -87,6 +103,7 @@ impl TryFrom<u32> for FpDeviceFeature {
     }
 }
 
+/// Enum representing the different types of scans that a device may support.
 #[derive(Debug)]
 pub enum FpScanType {
     Swipe = libfprint_sys::FpScanType_FP_SCAN_TYPE_SWIPE as isize,
@@ -133,5 +150,5 @@ macro_rules! return_sucess {
     }};
 }
 
-pub(crate) use fn_pointer;
-pub(crate) use return_sucess;
+use fn_pointer;
+use return_sucess;

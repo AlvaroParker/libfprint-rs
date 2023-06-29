@@ -2,6 +2,8 @@ use std::marker::PhantomData;
 
 use crate::{context::FpContext, device, device::FpDevice};
 
+/// DeviceList — List of fingerprint devices
+/// This struct will allow you to iterate over the fingerprint devices.
 pub struct DeviceList<'a> {
     ctx: PhantomData<&'a FpContext>,
     list: *const *mut libfprint_sys::FpDevice,
@@ -34,6 +36,11 @@ pub(crate) unsafe fn from_libfprint<'a>(
     }
 }
 
+/// Collection of fingerprint devices
+/// This struct will allow you to iterate with the fingerprint devices
+/// available in the system.
+///
+/// To get an iterator of the devices, use the `iter` method.
 pub struct Devices<'a, 'b> {
     ctx: PhantomData<&'a FpContext>,
     devices: &'b [*mut libfprint_sys::FpDevice],

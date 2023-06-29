@@ -9,6 +9,7 @@ use crate::{
     utils::ptr_to_str_static,
 };
 
+/// Struct representing a fingerprint.
 #[derive(Debug, Clone)]
 pub struct FpPrint<'a> {
     pub(crate) context: PhantomData<&'a FpContext>,
@@ -16,6 +17,7 @@ pub struct FpPrint<'a> {
     pub(crate) auto_drop: bool,
 }
 
+/// Struct representing a serialized fingerprint.
 pub struct SerializedPrint<'a> {
     pub(crate) data: &'a mut [u8],
 }

@@ -5,6 +5,7 @@ use crate::{
     utils::{ptr_to_str, ptr_to_str_static},
 };
 
+/// Struct representing an error while scanning a fingerprint, interacting with the device, etc.
 #[derive(Debug)]
 pub struct GError<'a> {
     code: i32,

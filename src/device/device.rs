@@ -1,6 +1,6 @@
 use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
-pub type FpEnrollProgress<T> = fn(&FpDevice, i32, FpPrint, Option<GError>, &mut Option<T>) -> ();
+pub type FpEnrollProgress<T> = fn(&FpDevice, i32, FpPrint, Option<GError>, &Option<T>) -> ();
 pub type FpMatchCb<T> = fn(&FpDevice, Option<FpPrint>, FpPrint, Option<GError>, &Option<T>) -> ();
 
 use crate::{
@@ -22,7 +22,7 @@ use super::{
 impl<'a> FpDevice<'a> {
     #[cfg(not(doctest))]
     /// Identify a print from a given vector of prints.
-    /// # Example:
+    /// ## Example:
     ///
     /// ```
     /// use libfprint_rs::{device::FpDevice, error::GError, print::FpPrint, context::FpContext};
@@ -45,6 +45,40 @@ impl<'a> FpDevice<'a> {
     /// }
     /// let prints: Vec<FpPrint> = function_to_get_prints(&dev);
     /// dev.identify(prints, Some(callback_function), None::<()>, None, None);
+    /// ```
+    /// ***
+    /// ## Example with mutation
+    /// If you want to mutate the data inside `match_data` you can use `Rc<RefCell<T>>`:
+    /// ```
+    /// use std::{cell::RefCell, rc::Rc};
+    /// use libfprint_rs::{device::FpDevice, error::GError, print::FpPrint, context::FpContext};
+    ///
+    /// let ctx = FpContext::new();
+    /// let dev = ctx.get_devices().iter().next().unwrap();
+    ///
+    /// struct UserData {
+    ///     count: u32,
+    ///     name: String,
+    /// }
+    ///
+    /// fn callback_fn(
+    ///     device: &FpDevice,              // The fingerprint scanner device
+    ///     matched_print: Option<FpPrint>, // The matched print, if any.
+    ///     new_print: FpPrint,             // New print scanned.
+    ///     error: Option<GError>,          // Optinal error in case of an error.
+    ///     match_data: &Option<Rc<RefCell<UserData>>>, // User data can be any data type.
+    /// )
+    /// {
+    ///     if let Some(user_data) = match_data {
+    ///         user_data.borrow_mut().count += 1;
+    ///         // Mutate the user data
+    ///     }
+    ///     println!("Found matched print!");
+    /// }
+    ///
+    /// let user_data = Rc::new(RefCell::new(UserData { count: 304, name: "Donda".into() }));
+    /// dev.identify(prints, Some(callback_fn), Some(user_data), None, None);
+    /// println!("{}", user_data.borrow().count);
     /// ```
     pub fn identify<T>(
         &self,
@@ -125,7 +159,7 @@ impl<'a> FpDevice<'a> {
     }
     #[cfg(not(doctest))]
     /// Enroll a new print. Template print is a print with relevant metadata filled in.
-    /// # Example:
+    /// ## Example:
     /// ```
     ///
     /// use libfprint_rs::{device::FpDevice, error::GError, print::FpPrint, context::FpContext};
@@ -138,7 +172,7 @@ impl<'a> FpDevice<'a> {
     ///     completed_stages: i32,
     ///     print: FpPrint,
     ///     error: Option<GError>,
-    ///     user_data: &mut Option<()>
+    ///     user_data: &Option<()>
     /// ) {
     ///     if error.is_none() {
     ///         println!("Enrolling: {} of {}", completed_stages, device.get_nr_enroll_stages() );
@@ -148,6 +182,41 @@ impl<'a> FpDevice<'a> {
     /// let template_print = FpPrint::new(&dev);
     ///
     /// dev.enroll(template_print, Some(callback_fn), None::<()>);
+    /// ```
+    /// ***
+    /// ## Example with mutation
+    /// If you want to mutate the data inside `user_data` you can use `Rc<RefCell<T>>`:
+    /// ```
+    /// use std::{cell::RefCell, rc::Rc};
+    /// use libfprint_rs::{device::FpDevice, error::GError, print::FpPrint, context::FpContext};
+    ///
+    /// let ctx = FpContext::new();
+    /// let dev = ctx.get_devices().iter().next().unwrap();
+    ///
+    /// struct UserData {
+    ///     count: u32,
+    ///     name: String,
+    /// }
+    ///
+    /// fn callback_fn(
+    ///     device: &FpDevice,
+    ///     completed_stages: i32,
+    ///     print: FpPrint,
+    ///     error: Option<GError>,
+    ///     user_data: &Option<Rc<RefCell<UserData>>>
+    /// ) {
+    ///     if let Some(user_data) = user_data {
+    ///         user_data.borrow_mut().count += 1;
+    ///         // Mutate the user data
+    ///     }
+    ///     println!("Enrolling: {} of {}", completed_stages, device.get_nr_enroll_stages() );
+    /// }
+    ///
+    /// let user_data = Rc::new(RefCell::new(UserData { count: 304, name: "Donda".into() }));
+    /// let template_print = FpPrint::new(&dev);
+    ///
+    /// dev.enroll(template_print, Some(callback_fn), Some(user_data));
+    /// println!("{}", user_data.borrow().count);
     /// ```
     pub fn enroll<T>(
         &self,
@@ -173,7 +242,8 @@ impl<'a> FpDevice<'a> {
             )
         };
         if !ptr_clone.is_null() {
-            let boxed = unsafe { Box::from_raw(ptr_clone) };
+            let boxed: Box<UserData<FpEnrollProgress<T>, T>> =
+                unsafe { Box::from_raw(ptr_clone.cast()) };
             drop(boxed);
         }
         if raw_print.is_null() {
