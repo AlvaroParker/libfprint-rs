@@ -31,7 +31,7 @@ pub(crate) extern "C" fn fb_enroll_progress<F, T>(
         let gerror = if error.is_null() {
             None
         } else {
-            unsafe { Some(error::from_libfprint_static(error)) }
+            unsafe { Some(error::from_libfprint_static(error, false)) }
         };
 
         callback_data.callback_enroll(&device, completed_stages, print, gerror);
@@ -71,7 +71,7 @@ pub(crate) extern "C" fn fp_match_cb<F, T>(
         let gerror = if error.is_null() {
             None
         } else {
-            unsafe { Some(error::from_libfprint_static(error)) }
+            unsafe { Some(error::from_libfprint_static(error, false)) }
         };
         callback_data.callback_match(&device, matched_print, print, gerror);
     }

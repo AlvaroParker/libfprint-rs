@@ -1,4 +1,4 @@
-use std::{fmt, marker::PhantomData};
+use std::{ffi::c_void, fmt, marker::PhantomData};
 
 use crate::{
     context::FpContext,
@@ -10,6 +10,19 @@ pub struct GError<'a> {
     code: i32,
     message: &'a str,
     source: GErrorSource,
+    _ptr: *mut libfprint_sys::GError,
+    transfer: bool,
+}
+
+impl<'a> Drop for GError<'a> {
+    fn drop(&mut self) {
+        if self.transfer {
+            unsafe {
+                libfprint_sys::g_free(self._ptr.cast());
+                libfprint_sys::g_free(self.message.as_ptr() as *mut c_void);
+            }
+        }
+    }
 }
 
 impl<'a> std::error::Error for GError<'a> {
@@ -56,13 +69,20 @@ pub unsafe fn from_libfprint<'a>(
     GError {
         message: ptr_to_str(context, error.read().message.cast()),
         code: error.read().code,
+        _ptr: error,
         source: GErrorSource::new(unsafe { error.read().domain }),
+        transfer: true,
     }
 }
-pub unsafe fn from_libfprint_static(error: *mut libfprint_sys::GError) -> GError<'static> {
+pub unsafe fn from_libfprint_static(
+    error: *mut libfprint_sys::GError,
+    transfer: bool,
+) -> GError<'static> {
     GError {
         message: ptr_to_str_static(error.read().message.cast()),
         code: error.read().code,
+        _ptr: error,
         source: GErrorSource::new(unsafe { error.read().domain }),
+        transfer,
     }
 }

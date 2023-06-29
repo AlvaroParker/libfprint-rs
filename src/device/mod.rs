@@ -127,7 +127,8 @@ macro_rules! return_sucess {
         if res == 1 {
             Ok(())
         } else {
-            Err(unsafe { crate::error::from_libfprint_static(ptr) })
+            // unsafe { libfprint_sys::g_object_unref(ptr.cast()) };
+            Err(unsafe { crate::error::from_libfprint_static(ptr, true) })
         }
     }};
 }

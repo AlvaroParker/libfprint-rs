@@ -177,7 +177,7 @@ impl<'a> FpDevice<'a> {
             drop(boxed);
         }
         if raw_print.is_null() {
-            Err(unsafe { error::from_libfprint_static(gerror) })
+            Err(unsafe { error::from_libfprint_static(gerror, true) })
         } else {
             template_print.print = Rc::new(RefCell::new(std::ptr::null_mut()));
             let print = unsafe { print::from_libfprint_static(raw_print) };
@@ -252,7 +252,7 @@ impl<'a> FpDevice<'a> {
             )
         };
         if raw_image.is_null() {
-            Err(unsafe { error::from_libfprint_static(raw_error) })
+            Err(unsafe { error::from_libfprint_static(raw_error, true) })
         } else {
             Ok(FpImage { image: raw_image })
         }
