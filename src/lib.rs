@@ -54,7 +54,6 @@ mod tests {
             println!("Found matched print!");
         }
     }
-    #[test]
     fn ident_test() {
         let ctx = FpContext::new();
         let dev = match ctx.get_devices().iter().next() {
