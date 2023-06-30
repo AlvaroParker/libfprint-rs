@@ -28,7 +28,7 @@
 //!
 //! let enrolled_print = load_print_from_file();
 //!
-//! dev.verify(enrolled_print, None, None::<()>, None)?;
+//! let match_res = dev.verify(enrolled_print, None, None::<()>, None)?;
 //! ```
 //! For more examples on how to use this crate, please refer to the github oficial repository.
 mod context;
@@ -127,15 +127,18 @@ mod tests {
 
         let mut matched_print = FpPrint::new(&dev);
         matched_print.set_username("Some username should be here");
-        let mut new_print = FpPrint::new(&dev);
 
-        dev.identify(
-            prints,
-            Some(match_cb_function),
-            None,
-            Some(&mut matched_print),
-            Some(&mut new_print),
-        )
-        .unwrap();
+        let res = dev
+            .identify(
+                prints,
+                Some(match_cb_function),
+                None,
+                Some(&mut matched_print),
+            )
+            .unwrap();
+
+        if res.is_none() {
+            println!("No matching fingerprint found");
+        }
     }
 }

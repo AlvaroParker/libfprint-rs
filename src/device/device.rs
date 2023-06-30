@@ -46,7 +46,10 @@ impl<'a> FpDevice<'a> {
     ///     }
     /// }
     /// let prints: Vec<FpPrint> = function_to_get_prints(&dev);
-    /// dev.identify(prints, Some(callback_function), None::<()>, None, None);
+    /// let matched_print = dev.identify(prints, Some(callback_function), None::<()>, None).unwrap();
+    /// if matched_print.is_some() {
+    ///     println!("Found matched print");
+    /// }
     /// ```
     /// ***
     /// ## Example with mutation
@@ -79,22 +82,23 @@ impl<'a> FpDevice<'a> {
     /// }
     ///
     /// let user_data = Rc::new(RefCell::new(UserData { count: 304, name: "Donda".into() }));
-    /// dev.identify(prints, Some(callback_fn), Some(user_data), None, None);
+    /// let matched_print = dev.identify(prints, Some(callback_fn), Some(user_data), None).unwrap();
+    /// if matched_print.is_some() {
+    ///     println!("Found matched print");
+    /// }
     /// println!("{}", user_data.borrow().count);
     /// ```
     pub fn identify<T>(
-        // We should change the behavior of this function and return Result<Option<FpPrint>, GError>.
-        // such as the user can know without using callbacks if there was a match or not.
         &self,
         mut prints: Vec<FpPrint>,
         callback_fn: Option<FpMatchCb<T>>,
         user_data: Option<T>,
-        matched_print: Option<&mut FpPrint>,
         new_print: Option<&mut FpPrint>,
-    ) -> Result<(), GError<'static>> {
+    ) -> Result<Option<FpPrint<'a>>, GError<'static>> {
         // Create pointer to callback function
         let fn_pointer = fn_pointer!(callback_fn, user_data);
 
+        let mut match_raw: libfprint_sys::FpPrint_autoptr = std::ptr::null_mut();
         // Create array of pointers
         let prints_arr: libfprint_sys::GPtrArray_autoptr =
             unsafe { libfprint_sys::g_ptr_array_new() }; // Autoptr GArray
@@ -104,9 +108,6 @@ impl<'a> FpDevice<'a> {
 
         // Create gerror
         let mut gerror = std::ptr::null_mut();
-
-        // Matched print pointer
-        let matched_print_raw = get_print_ptr(matched_print);
 
         // New print pointer
         let new_print_raw = get_print_ptr(new_print);
@@ -119,7 +120,7 @@ impl<'a> FpDevice<'a> {
                 std::ptr::null_mut(),
                 Some(fp_match_cb::<FpMatchCb<T>, T>),
                 fn_pointer,
-                matched_print_raw.cast(),
+                std::ptr::addr_of_mut!(match_raw),
                 new_print_raw.cast(),
                 std::ptr::addr_of_mut!(gerror),
             )
@@ -128,8 +129,17 @@ impl<'a> FpDevice<'a> {
         // Cleanup
         unsafe { libfprint_sys::g_ptr_array_free(prints_arr.cast(), 1) };
 
+        return_sucess!(
+            res,
+            gerror,
+            if match_raw.is_null() {
+                None
+            } else {
+                Some(unsafe { print::from_libfprint_static(match_raw) })
+            }
+        )
+
         // Return Ok or Err if error
-        return_sucess!(res, gerror, ())
     }
     /// Returns the name of the device.
     pub fn get_name(&self) -> &str {
@@ -284,7 +294,10 @@ impl<'a> FpDevice<'a> {
     /// let enrolled_print = get_enrolled_print();
     /// // Where we saved the new scanned print
     /// let mut scanned_print = FpPrint::new(&dev);
-    /// dev.verify(enrolled_print, Some(match_callback_fn), None::<()>, Some(&mut scanned_print));
+    /// let matched_res = dev.verify(enrolled_print, Some(match_callback_fn), None::<()>, Some(&mut scanned_print)).unwrap();
+    /// if matched_res {
+    ///     println!("Found matched print");
+    /// }
     /// ```
     pub fn verify<T>(
         &self,
