@@ -137,11 +137,11 @@ macro_rules! fn_pointer {
 }
 
 macro_rules! return_sucess {
-    ($res:ident, $ptr: ident) => {{
+    ($res:ident, $ptr: ident, $return_val: expr ) => {{
         let res: i32 = $res;
         let ptr: *mut libfprint_sys::_GError = $ptr;
         if res == 1 {
-            Ok(())
+            Ok($return_val)
         } else {
             // unsafe { libfprint_sys::g_object_unref(ptr.cast()) };
             Err(unsafe { crate::error::from_libfprint_static(ptr, true) })

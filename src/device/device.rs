@@ -83,6 +83,8 @@ impl<'a> FpDevice<'a> {
     /// println!("{}", user_data.borrow().count);
     /// ```
     pub fn identify<T>(
+        // We should change the behavior of this function and return Result<Option<FpPrint>, GError>.
+        // such as the user can know without using callbacks if there was a match or not.
         &self,
         mut prints: Vec<FpPrint>,
         callback_fn: Option<FpMatchCb<T>>,
@@ -127,7 +129,7 @@ impl<'a> FpDevice<'a> {
         unsafe { libfprint_sys::g_ptr_array_free(prints_arr.cast(), 1) };
 
         // Return Ok or Err if error
-        return_sucess!(res, gerror)
+        return_sucess!(res, gerror, ())
     }
     /// Returns the name of the device.
     pub fn get_name(&self) -> &str {
@@ -145,7 +147,7 @@ impl<'a> FpDevice<'a> {
             )
         };
 
-        return_sucess!(res, gerror)
+        return_sucess!(res, gerror, ())
     }
     /// Close the device.
     pub fn close(&self) -> Result<(), GError<'static>> {
@@ -157,7 +159,7 @@ impl<'a> FpDevice<'a> {
                 std::ptr::addr_of_mut!(gerror),
             )
         };
-        return_sucess!(res, gerror)
+        return_sucess!(res, gerror, ())
     }
     #[cfg(not(doctest))]
     /// Enroll a new print. Template print is a print with relevant metadata filled in.
@@ -290,7 +292,7 @@ impl<'a> FpDevice<'a> {
         callback_fn: Option<FpMatchCb<T>>,
         match_data: Option<T>,
         scanned_print: Option<&mut FpPrint>,
-    ) -> Result<(), GError<'static>> {
+    ) -> Result<bool, GError<'static>> {
         let ptr = fn_pointer!(callback_fn, match_data);
 
         let mut gerror = std::ptr::null_mut();
@@ -310,7 +312,7 @@ impl<'a> FpDevice<'a> {
                 std::ptr::addr_of_mut!(gerror),
             )
         };
-        return_sucess!(res, gerror)
+        return_sucess!(res, gerror, matched == 1)
     }
     /// Start operation to capture an image.
     pub fn capture(&self) -> Result<FpImage, GError<'static>> {
@@ -392,7 +394,7 @@ impl<'a> FpDevice<'a> {
                 std::ptr::addr_of_mut!(raw_error),
             )
         };
-        return_sucess!(res, raw_error)
+        return_sucess!(res, raw_error, ())
     }
     pub fn list_prints(&self) {
         todo!();
@@ -408,7 +410,7 @@ impl<'a> FpDevice<'a> {
                 std::ptr::addr_of_mut!(raw_error),
             )
         };
-        return_sucess!(res, raw_error)
+        return_sucess!(res, raw_error, ())
     }
     /// Prepare device for suspend.
     #[cfg(target_arch = "x86_64")]
@@ -421,7 +423,7 @@ impl<'a> FpDevice<'a> {
                 std::ptr::addr_of_mut!(raw_error),
             )
         };
-        return_sucess!(res, raw_error)
+        return_sucess!(res, raw_error, ())
     }
 
     /// Resume device after suspend.
@@ -435,7 +437,7 @@ impl<'a> FpDevice<'a> {
                 std::ptr::addr_of_mut!(raw_error),
             )
         };
-        return_sucess!(res, raw_error)
+        return_sucess!(res, raw_error, ())
     }
 }
 
