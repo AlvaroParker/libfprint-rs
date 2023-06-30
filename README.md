@@ -28,3 +28,10 @@ fn main() {
 ``` 
 ## License 
 Distributed under the [MIT License](LICENSE).
+
+### Status
+Currently libfprint-rs is WIP.
+
+Todo:
+* Add GCancellable or an abstraction to that type to allow users to cancel operations (such as enroll, verify, identify).
+* Handle fingerprint initialized passed to `FpDevice` implementations.

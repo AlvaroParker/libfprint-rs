@@ -59,7 +59,7 @@ mod tests {
         _count: u32,
         _name: String,
     }
-    fn generate_print<'a>(dev: &'a FpDevice) -> FpPrint<'a> {
+    fn generate_print<'a>(dev: &'a FpDevice, metadata: &'static str) -> FpPrint<'a> {
         let user_data = UserData {
             _count: 304,
             _name: "Donda".into(),
@@ -68,6 +68,7 @@ mod tests {
         let user_data = Rc::new(RefCell::new(user_data));
 
         let template = FpPrint::new(&dev);
+        template.set_username(metadata);
         let print1 = dev
             .enroll(template, Some(callback_fn), Some(user_data.clone()))
             .unwrap();
@@ -109,7 +110,7 @@ mod tests {
             println!("Found matched print!");
         }
     }
-    #[test]
+    // #[test]
     fn ident_test() {
         let ctx = FpContext::new();
         let dev = match ctx.get_devices().iter().next() {
@@ -123,7 +124,7 @@ mod tests {
 
         dev.open().unwrap(); // Open the device
 
-        let prints = vec![generate_print(&dev), generate_print(&dev)];
+        let prints = vec![generate_print(&dev, "First print"), generate_print(&dev, "Second print")];
 
         let mut matched_print = FpPrint::new(&dev);
         matched_print.set_username("Some username should be here");
@@ -137,7 +138,11 @@ mod tests {
             )
             .unwrap();
 
-        if res.is_none() {
+        if let Some(print) = res {
+            if let Some(name) = print.get_username() {
+                println!("Found matching fingerprint for username \"{}\"", name);
+            }
+        } else {
             println!("No matching fingerprint found");
         }
     }

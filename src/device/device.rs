@@ -98,6 +98,8 @@ impl<'a> FpDevice<'a> {
         // Create pointer to callback function
         let fn_pointer = fn_pointer!(callback_fn, user_data);
 
+        // Create a new NULL pointer where the matching fingerprint will be stored
+        // This print is transfer full so we have to handle this pointer freeing
         let mut match_raw: libfprint_sys::FpPrint_autoptr = std::ptr::null_mut();
         // Create array of pointers
         let prints_arr: libfprint_sys::GPtrArray_autoptr =
@@ -129,7 +131,7 @@ impl<'a> FpDevice<'a> {
         // Cleanup
         unsafe { libfprint_sys::g_ptr_array_free(prints_arr.cast(), 1) };
 
-        return_sucess!(
+        return_sucess! {
             res,
             gerror,
             if match_raw.is_null() {
@@ -137,7 +139,7 @@ impl<'a> FpDevice<'a> {
             } else {
                 Some(unsafe { print::from_libfprint_static(match_raw) })
             }
-        )
+        }
 
         // Return Ok or Err if error
     }
@@ -409,7 +411,7 @@ impl<'a> FpDevice<'a> {
         };
         return_sucess!(res, raw_error, ())
     }
-    pub fn list_prints(&self) {
+    fn _list_prints(&self) {
         todo!();
     }
     /// Deletes all prints from the device. This only makes sense on devices that store prints on-chip, but is safe to always call.
