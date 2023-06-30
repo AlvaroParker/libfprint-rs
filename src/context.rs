@@ -4,7 +4,7 @@ use crate::DeviceList;
 
 use crate::device_list;
 
-/// The FpContext allows you to discover fingerprint scanning hardware. This is the starting point when integrating libfprint-rs into your software.
+/// This struct allows you to discover fingerprint scanning hardware. This is the starting point when integrating libfprint-rs into your software.
 pub struct FpContext {
     context: *mut libfprint_sys::FpContext,
 }

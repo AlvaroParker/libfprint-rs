@@ -2,13 +2,17 @@
 This crate provides a wrapper around the native `libfprint` library. 
 
 ## Dependencies
-This package requires `libfprint-2` to be installed in your system alongside `glib-2`, `libclang` and `pkg-config`
+This package requires `libfprint-2` to be installed in your system alongside `libclang` and `pkg-config`
 
 ## Usage
 Add `libfprint-rs` as a dependency in `Cargo.toml`
 ```
 [dependencies]
-libfprint-rs = "0.1.0"
+libfprint-rs = "0.1.10"
+```
+Or using `cargo`
+```
+cargo add libfprint-rs
 ```
 Import the `libfprint_rs` crate. The starting point for nearly all `libfprint-rs` functionality is to create a context object. With a context object, you can list devices, open them and execute their functionalities.
 ```rust

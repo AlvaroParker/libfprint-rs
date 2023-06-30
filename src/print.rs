@@ -17,7 +17,7 @@ pub struct FpPrint<'a> {
     pub(crate) auto_drop: bool,
 }
 
-/// Struct representing a serialized fingerprint.
+/// Struct representing a serialized fingerprint. You can use this struct to save a fingerprint to persistent storage for later use.
 pub struct SerializedPrint<'a> {
     pub(crate) data: &'a mut [u8],
 }

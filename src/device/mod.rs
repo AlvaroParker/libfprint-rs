@@ -13,9 +13,8 @@ pub use crate::device::device::FpEnrollProgress;
 pub use crate::device::device::FpMatchCb;
 pub use crate::device_list::{DeviceList, Devices};
 
-/// Fingerpint device routines
+/// Fingerpint device routines. You can interact with fingerprint devices using this struct.
 ///
-/// These struct will allow you to interact with the fingerprint device.
 /// # Examples:
 /// ```rust
 /// use libfprint_rs::FpContext;

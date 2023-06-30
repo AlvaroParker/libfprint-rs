@@ -1,4 +1,4 @@
-//! Rust bindings for [libfprint](https://gitlab.freedesktop.org/libfprint/libfprint)
+//! Rust bindings for [libfprint](https://gitlab.freedesktop.org/libfprint/libfprint).
 //!
 //! This crate provides a wrapper around the libfprint library, which allows you to use fingerprint scanners in your Rust applications.
 //!
@@ -30,6 +30,7 @@
 //!
 //! dev.verify(enrolled_print, None, None::<()>, None)?;
 //! ```
+//! For more examples on how to use this crate, please refer to the github oficial repository.
 mod context;
 mod device;
 mod error;

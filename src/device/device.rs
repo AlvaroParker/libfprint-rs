@@ -1,6 +1,8 @@
 use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
+/// This type represents the callback function for the `FpDevice::enroll` implementation and will be called for each stage of the enrollment process.
 pub type FpEnrollProgress<T> = fn(&FpDevice, i32, FpPrint, Option<GError>, &Option<T>) -> ();
+/// This type represents the callback function for the `FpDevice::verify` and `FpDevice::identify` implementations and will be called when a print is matched.
 pub type FpMatchCb<T> = fn(&FpDevice, Option<FpPrint>, FpPrint, Option<GError>, &Option<T>) -> ();
 
 use crate::{
