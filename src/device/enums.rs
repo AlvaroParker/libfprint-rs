@@ -1,9 +1,11 @@
+/// The scan type of the device.
 #[derive(Debug, Clone, Copy)]
 pub enum FpScanType {
     Swipe = libfprint_sys::FpScanType_FP_SCAN_TYPE_SWIPE as isize,
     Press = libfprint_sys::FpScanType_FP_SCAN_TYPE_PRESS as isize,
 }
 
+/// The finger status flags for the device.
 #[derive(Debug, Clone, Copy)]
 pub enum FpFingerStatus {
     None = libfprint_sys::FpFingerStatusFlags_FP_FINGER_STATUS_NONE as isize,

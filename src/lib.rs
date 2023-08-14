@@ -4,44 +4,40 @@ mod finger;
 mod image;
 mod print;
 
+pub use gio::traits::CancellableExt;
+pub use gio::Cancellable;
+pub use glib::Date as GDate;
+pub use glib::Error as GError;
+
+pub use context::FpContext;
+pub use device::FpDevice;
+pub use finger::FpFinger;
+pub use image::FpImage;
+pub use print::FpPrint;
+
 #[cfg(test)]
 mod tests {
 
-    use crate::{context::FpContext, device::FpDevice, print::FpPrint};
+    use crate::{FpContext, FpDevice, FpFinger, FpPrint};
 
     #[test]
     fn get_names() {
         let ctx = FpContext::new();
-        let devs = ctx.devices();
-
-        let dev = devs[0].clone();
+        let devices = ctx.devices();
+        let dev = devices.get(0).unwrap();
 
         dev.open_sync(None).unwrap();
-        if let Err(e) = dev.open_sync(None) {
-            println!("Error while trying to open fingerprint device: {}", e);
+        let print = FpPrint::new(&dev);
+        print.set_finger(FpFinger::RightRing);
+        print.set_username("testing_username");
+
+        let print = dev.enroll_sync(print, None, Some(enroll_cb), Some(10));
+        if let Ok(print) = print {
+            if print.image().is_none() {
+                println!("Failed to get image from the scanned print");
+            }
         }
-        println!("Enrolling fingerprint devices");
-
-        let p = FpPrint::new(&dev);
-        let print1 = dev
-            .enroll_sync(p.clone(), None, Some(enroll_cb), Some(1))
-            .unwrap();
-
-        let print2 = dev
-            .enroll_sync(p.clone(), None, Some(enroll_cb), Some(1))
-            .unwrap();
-
-        let prints = vec![print1, print2];
-
-        let mut enrolled = FpPrint::new(&dev);
-        dev.identify_sync(&prints, None, Some(match_cb), Some(1), Some(&mut enrolled))
-            .unwrap();
-
-        let print = &prints[0];
-        let s = print.serialize().unwrap();
-        println!("{:?}", s);
     }
-
     pub fn enroll_cb(
         _device: &FpDevice,
         enroll_stage: i32,
@@ -51,7 +47,7 @@ mod tests {
     ) -> () {
         println!("Enroll stage: {}", enroll_stage);
     }
-    pub fn match_cb(
+    pub fn _match_cb(
         _device: &FpDevice,
         matched_print: Option<FpPrint>,
         _print: FpPrint,

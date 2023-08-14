@@ -1,3 +1,8 @@
+use std::fmt::Display;
+
+/// Enum representing a finger. This can be used to specify which finger was used to enroll a new print and can be added as part of the
+/// print metadata.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum FpFinger {
     Unknown = libfprint_sys::FpFinger_FP_FINGER_UNKNOWN as isize,
     LeftThumb = libfprint_sys::FpFinger_FP_FINGER_LEFT_THUMB as isize,
@@ -10,6 +15,24 @@ pub enum FpFinger {
     RightMiddle = libfprint_sys::FpFinger_FP_FINGER_RIGHT_MIDDLE as isize,
     RightRing = libfprint_sys::FpFinger_FP_FINGER_RIGHT_RING as isize,
     RightLittle = libfprint_sys::FpFinger_FP_FINGER_RIGHT_LITTLE as isize,
+}
+
+impl Display for FpFinger {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FpFinger::Unknown => write!(f, "Unknown"),
+            FpFinger::LeftThumb => write!(f, "Left Thumb"),
+            FpFinger::LeftIndex => write!(f, "Left Index"),
+            FpFinger::LeftMiddle => write!(f, "Left Middle"),
+            FpFinger::LeftRing => write!(f, "Left Ring"),
+            FpFinger::LeftLittle => write!(f, "Left Little"),
+            FpFinger::RightThumb => write!(f, "Right Thumb"),
+            FpFinger::RightIndex => write!(f, "Right Index"),
+            FpFinger::RightMiddle => write!(f, "Right Middle"),
+            FpFinger::RightRing => write!(f, "Right Ring"),
+            FpFinger::RightLittle => write!(f, "Right Little"),
+        }
+    }
 }
 
 impl From<FpFinger> for i32 {

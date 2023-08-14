@@ -8,6 +8,21 @@ use gio::AsyncInitable;
 use glib::wrapper;
 
 wrapper! {
+#[cfg(not(doctest))]
+/// Fingerpint device routines. You can interact with fingerprint devices using this struct.
+///
+/// # Examples:
+/// ```rust
+/// use libfprint_rs::FpContext;
+///
+/// let context = FpContext::new();
+/// let devices = context.devices();
+/// let device = devices.get(0).unwrap();
+///
+/// device.open_sync(None).unwrap();
+/// let name = device.name().unwrap();
+/// println!("Device name: {}", name);
+/// ```
     pub struct FpDevice(Object<libfprint_sys::FpDevice, libfprint_sys::FpDeviceClass>)
         @implements AsyncInitable;
 
@@ -19,7 +34,7 @@ wrapper! {
 unsafe impl Send for FpDevice {}
 unsafe impl Sync for FpDevice {}
 
-pub struct UserData<F, T> {
+pub(crate) struct UserData<F, T> {
     function: F,
     data: Option<T>,
 }
