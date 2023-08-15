@@ -4,6 +4,7 @@ mod device_sync;
 mod enums;
 mod user_data;
 
+pub use device_sync::{FpEnrollProgress, FpMatchCb};
 use gio::AsyncInitable;
 use glib::wrapper;
 

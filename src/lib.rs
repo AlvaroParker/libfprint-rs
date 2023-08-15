@@ -10,7 +10,7 @@ pub use glib::Date as GDate;
 pub use glib::Error as GError;
 
 pub use context::FpContext;
-pub use device::FpDevice;
+pub use device::{FpDevice, FpEnrollProgress, FpMatchCb};
 pub use finger::FpFinger;
 pub use image::FpImage;
 pub use print::FpPrint;
