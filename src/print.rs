@@ -1,205 +1,181 @@
-use std::{cell::RefCell, marker::PhantomData, rc::Rc};
-
-use crate::{
-    context::FpContext,
-    device::FpDevice,
-    error::{self, GError},
-    finger::Finger,
-    image::FpImage,
-    utils::ptr_to_str_static,
+// All methods are declared
+use glib::{
+    translate::FromGlibPtrFull,
+    translate::{FromGlibContainer, FromGlibPtrNone, ToGlibPtr},
+    wrapper,
 };
 
-/// Struct representing a fingerprint.
-#[derive(Debug, Clone)]
-pub struct FpPrint<'a> {
-    pub(crate) context: PhantomData<&'a FpContext>,
-    pub(crate) print: Rc<RefCell<*mut libfprint_sys::FpPrint>>,
-    pub(crate) auto_drop: bool,
-}
+use crate::{device::FpDevice, finger::FpFinger, image::FpImage};
 
-/// Struct representing a serialized fingerprint. You can use this struct to save a fingerprint to persistent storage for later use.
-pub struct SerializedPrint<'a> {
-    pub(crate) data: &'a mut [u8],
-}
+wrapper! {
+    /// Struct representing a fingerprint.
+    pub struct FpPrint(Object<libfprint_sys::FpPrint, libfprint_sys::FpPrintClass>)
+        @extends glib::object::InitiallyUnowned;
 
-impl SerializedPrint<'_> {
-    pub fn as_slice(&self) -> &[u8] {
-        self.data
+    match fn {
+        type_ => || libfprint_sys::fp_print_get_type() as usize,
     }
 }
 
-impl Drop for SerializedPrint<'_> {
-    fn drop(&mut self) {
+impl FpPrint {
+    /// Create a new `FpPrint`. This is only useful to prepare an enrollment of a new print using `FpDevice::enroll_sync`.
+    /// For this you should first create a new print, fill in the relevant metadata, and then start the enrollment
+    pub fn new(dev: &FpDevice) -> Self {
         unsafe {
-            libfprint_sys::g_free(self.data.as_mut_ptr().cast());
+            let ptr = libfprint_sys::fp_print_new(dev.to_glib_none().0);
+            Self::from_glib_full(ptr)
         }
     }
-}
 
-impl Drop for FpPrint<'_> {
-    fn drop(&mut self) {
-        let count = Rc::strong_count(&self.print);
-        if !self.auto_drop && !(*self.print.borrow()).is_null() && count == 1 {
-            unsafe { libfprint_sys::g_object_unref((*self.print.borrow()).cast()) };
+    /// Returns the driver that the print was created for.
+    pub fn driver(&self) -> String {
+        unsafe {
+            let ptr = libfprint_sys::fp_print_get_driver(self.to_glib_none().0);
+            String::from_glib_none(ptr)
         }
     }
-}
-
-impl FpPrint<'_> {
-    pub fn new<'a>(device: &'a FpDevice) -> FpPrint<'a> {
-        // Possible memory leak
-        let raw_print = unsafe { libfprint_sys::fp_print_new(*device.device) };
-        FpPrint {
-            context: device.context,
-            print: Rc::new(RefCell::new(raw_print)),
-            auto_drop: false,
+    /// Returns the device ID that the print was created for.
+    pub fn device_id(&self) -> String {
+        unsafe {
+            let ptr = libfprint_sys::fp_print_get_device_id(self.to_glib_none().0);
+            String::from_glib_none(ptr)
         }
     }
-    pub fn serialize(&self) -> Result<SerializedPrint, GError> {
-        let mut raw_data = std::ptr::null_mut();
-        let mut len = 0;
-        let mut gerror = std::ptr::null_mut();
-        let res = unsafe {
-            libfprint_sys::fp_print_serialize(
-                *self.print.borrow(),
-                std::ptr::addr_of_mut!(raw_data),
-                std::ptr::addr_of_mut!(len),
-                std::ptr::addr_of_mut!(gerror),
-            )
-        };
-        if res == 1 {
-            let print = SerializedPrint {
-                data: unsafe { std::slice::from_raw_parts_mut(raw_data, len as usize) },
-            };
-            Ok(print)
-        } else {
-            Err(unsafe { error::from_libfprint(self.context, gerror) })
-        }
-    }
-    pub fn deserialize(data: &[u8]) -> Result<FpPrint<'static>, GError> {
-        let mut gerror = std::ptr::null_mut();
-        let raw_print = unsafe {
-            libfprint_sys::fp_print_deserialize(
-                data.as_ptr(),
-                data.len().try_into().unwrap(),
-                std::ptr::addr_of_mut!(gerror),
-            )
-        };
-        if raw_print.is_null() {
-            Err(unsafe { error::from_libfprint(PhantomData, gerror) })
-        } else {
-            Ok(FpPrint {
-                context: PhantomData,
-                print: Rc::new(RefCell::new(raw_print)),
-                auto_drop: false,
-            })
-        }
-    }
-    pub fn driver(&self) -> &str {
-        let driver = unsafe { libfprint_sys::fp_print_get_driver(*self.print.borrow()) };
-        ptr_to_str_static(driver.cast())
-    }
-    pub fn device_id(&self) -> &str {
-        let device_id = unsafe { libfprint_sys::fp_print_get_device_id(*self.print.borrow()) };
-        ptr_to_str_static(device_id.cast())
-    }
+    /// Whether the print is actually stored on the device and this is just a handle to use that references the device stored data.
     pub fn device_stored(&self) -> bool {
-        let res = unsafe { libfprint_sys::fp_print_get_device_stored(*self.print.borrow()) };
-        if res == 1 {
-            true
-        } else {
-            false
-        }
-    }
-    pub fn get_image(&self) -> Option<FpImage> {
-        // Untested because of device doesn't support this funcionality
-        let raw_image = unsafe { libfprint_sys::fp_print_get_image(*self.print.borrow()) };
-        if raw_image.is_null() {
-            None
-        } else {
-            Some(FpImage { image: raw_image })
-        }
-    }
-    pub fn get_finger(&self) -> Finger {
-        let raw_finger = unsafe { libfprint_sys::fp_print_get_finger(*self.print.borrow()) };
-        Finger::from(raw_finger)
-    }
-    pub fn get_username(&self) -> Option<&str> {
-        let raw_username = unsafe { libfprint_sys::fp_print_get_username(*self.print.borrow()) };
-        if raw_username.is_null() {
-            None
-        } else {
-            Some(ptr_to_str_static(raw_username.cast()))
-        }
-    }
-    pub fn get_description(&self) -> Option<&str> {
-        let raw_desc = unsafe { libfprint_sys::fp_print_get_description(*self.print.borrow()) };
-        if raw_desc.is_null() {
-            None
-        } else {
-            Some(ptr_to_str_static(raw_desc.cast()))
-        }
-    }
-    pub fn get_enroll_date() {
-        todo!()
-    }
-    pub fn set_finger(&self, finger: Finger) {
         unsafe {
-            libfprint_sys::fp_print_set_finger(*self.print.borrow(), finger as u32);
+            libfprint_sys::fp_print_get_device_stored(self.to_glib_none().0) == glib::ffi::GTRUE
         }
     }
-    pub fn set_username(&self, username: &str) {
-        let username =
-            std::ffi::CString::new(username).expect("Error settings username for fingerprint");
+    /// Returns the image that the print was created from, or None
+    pub fn image(&self) -> Option<FpImage> {
         unsafe {
-            libfprint_sys::fp_print_set_username(*self.print.borrow(), username.as_ptr());
+            let ptr = libfprint_sys::fp_print_get_image(self.to_glib_none().0);
+            if ptr.is_null() {
+                None
+            } else {
+                Some(FpImage::from_glib_none(ptr))
+            }
         }
     }
-    pub fn set_description(&self, description: &str) {
-        let description = std::ffi::CString::new(description)
-            .expect("Error settings description for fingerprint");
+    /// Returns the finger that the print was created for.
+    pub fn finger(&self) -> FpFinger {
+        let raw_finger = unsafe { libfprint_sys::fp_print_get_finger(self.to_glib_none().0) };
+        FpFinger::from(raw_finger)
+    }
+    /// Returns the user defined username for the print.
+    pub fn username(&self) -> Option<String> {
         unsafe {
-            libfprint_sys::fp_print_set_description(*self.print.borrow(), description.as_ptr());
+            let ptr = libfprint_sys::fp_print_get_username(self.to_glib_none().0);
+            if ptr.is_null() {
+                None
+            } else {
+                Some(String::from_glib_none(ptr))
+            }
         }
     }
-    pub fn set_enroll_date() {
-        todo!()
-    }
-    pub fn compatible(&self, device: &FpDevice) -> bool {
-        let res =
-            unsafe { libfprint_sys::fp_print_compatible(*self.print.borrow(), *device.device) };
-        if res == 1 {
-            true
-        } else {
-            false
+    /// Returns the user defined description for the print.
+    pub fn description(&self) -> Option<String> {
+        unsafe {
+            let ptr = libfprint_sys::fp_print_get_description(self.to_glib_none().0);
+            if ptr.is_null() {
+                None
+            } else {
+                Some(String::from_glib_none(ptr))
+            }
         }
     }
-    pub fn equal(&self, other: &FpPrint) -> bool {
-        let res =
-            unsafe { libfprint_sys::fp_print_equal(*self.print.borrow(), *other.print.borrow()) };
-        if res == 1 {
-            true
-        } else {
-            false
+    /// Returns the user defined enroll date for the print.
+    pub fn enroll_date(&self) -> Option<crate::GDate> {
+        unsafe {
+            let ptr = libfprint_sys::fp_print_get_enroll_date(self.to_glib_none().0);
+            if ptr.is_null() {
+                None
+            } else {
+                Some(glib::Date::from_glib_none(ptr.cast()))
+            }
         }
     }
-}
 
-#[allow(dead_code)]
-pub(crate) unsafe fn from_libfprint<'a>(
-    context: PhantomData<&'a FpContext>,
-    print: *mut libfprint_sys::FpPrint,
-) -> FpPrint<'a> {
-    FpPrint {
-        context,
-        print: Rc::new(RefCell::new(print)),
-        auto_drop: true,
+    /// Set the finger that the print is for.
+    pub fn set_finger(&self, finger: FpFinger) {
+        unsafe { libfprint_sys::fp_print_set_finger(self.to_glib_none().0, finger as u32) };
     }
-}
-pub(crate) unsafe fn from_libfprint_static(print: *mut libfprint_sys::FpPrint) -> FpPrint<'static> {
-    FpPrint {
-        context: PhantomData,
-        print: Rc::new(RefCell::new(print)),
-        auto_drop: false,
+    /// Set the username for the print.
+    pub fn set_username(&self, username: &str) {
+        unsafe {
+            libfprint_sys::fp_print_set_username(self.to_glib_none().0, username.to_glib_none().0);
+        }
+    }
+    /// Set the description for the print.
+    pub fn set_description(&self, description: &str) {
+        unsafe {
+            libfprint_sys::fp_print_set_description(
+                self.to_glib_none().0,
+                description.to_glib_none().0,
+            );
+        }
+    }
+
+    /// Set the enroll date for the print.
+    pub fn set_enroll_date(&self, enroll_date: crate::GDate) {
+        unsafe {
+            libfprint_sys::fp_print_set_enroll_date(
+                self.to_glib_none().0,
+                enroll_date.to_glib_none().0.cast(),
+            );
+        }
+    }
+    /// Tests whether the prints is compatible with the given device.
+    pub fn compatible(&self, device: &FpDevice) -> bool {
+        unsafe {
+            libfprint_sys::fp_print_compatible(self.to_glib_none().0, device.to_glib_none().0)
+                == glib::ffi::GTRUE
+        }
+    }
+    /// Tests whether the prints can be considered equal. This only compares the actual information about the print, not the metadata.
+    pub fn equal(&self, other: &FpPrint) -> bool {
+        unsafe {
+            libfprint_sys::fp_print_equal(self.to_glib_none().0, other.to_glib_none().0)
+                == glib::ffi::GTRUE
+        }
+    }
+    /// Serialize a print definition for permanent storage. Note that this is lossy in the sense that e.g. the image data is discarded.
+    pub fn serialize(&self) -> Result<Vec<u8>, glib::Error> {
+        unsafe {
+            let mut content = std::ptr::null_mut();
+            let mut len = 0;
+            let mut error = std::ptr::null_mut();
+
+            libfprint_sys::fp_print_serialize(
+                self.to_glib_none().0,
+                &mut content,
+                &mut len,
+                &mut error,
+            );
+
+            if error.is_null() {
+                Ok(Vec::from_glib_full_num(content, len as usize))
+            } else {
+                Err(glib::Error::from_glib_full(error.cast()))
+            }
+        }
+    }
+
+    /// Deserialize a print definition from permanent storage.
+    pub fn deserialize(data: &[u8]) -> Result<FpPrint, glib::Error> {
+        let len = data.len();
+        let ptr = unsafe {
+            let ptr = glib::translate::ToGlibPtr::to_glib_none(data);
+            let mut error = std::ptr::null_mut();
+
+            libfprint_sys::fp_print_deserialize(ptr.0, len as u64, &mut error)
+        };
+
+        if ptr.is_null() {
+            Err(unsafe { glib::Error::from_glib_full(ptr.cast()) })
+        } else {
+            Ok(unsafe { FpPrint::from_glib_full(ptr) })
+        }
     }
 }

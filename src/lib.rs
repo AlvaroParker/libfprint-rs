@@ -1,149 +1,103 @@
-//! Rust bindings for [libfprint](https://gitlab.freedesktop.org/libfprint/libfprint).
-//!
-//! This crate provides a wrapper around the libfprint library, which allows you to use fingerprint scanners in your Rust applications.
-//!
-//! ## Enrolling a new fingerprint
-//! ```rust
-//! use libfprint_rs::{FpContext, FpPrint, GError};
-//!
-//! let context = FpContext::new();
-//! let devices = context.get_devices();
-//!
-//! let dev = devices.iter().next().unwrap();
-//! dev.open()?;
-//!
-//! let template = FpPrint::new(&dev);
-//! template.set_username("Bruce Banner");
-//!
-//! dev.enroll(template, None, None::<()>)?;
-//! ```
-//! ## Verifying a fingerprint
-//! ```rust
-//! use libfprint_rs::{FpContext, FpPrint, GError};
-//! let context = FpContext::new();
-//! let devices = context.get_devices();
-//!
-//! let dev = devices.iter().next().unwrap();
-//! dev.open()?;
-//!
-//! let enrolled_print = load_print_from_file();
-//!
-//! let match_res = dev.verify(enrolled_print, None, None::<()>, None)?;
-//! ```
-//! For more examples on how to use this crate, please refer to the github oficial repository.
 mod context;
 mod device;
-mod error;
 mod finger;
 mod image;
 mod print;
-pub(crate) mod utils;
 
-pub use crate::{
-    context::FpContext,
-    // import all from device mod
-    device::*,
-    error::{GError, GErrorSource},
-    finger::{Finger, FpFingerStatusFlags},
-    image::{FpImage, FpImageData},
-    print::{FpPrint, SerializedPrint},
-};
+pub use gio::traits::CancellableExt;
+/// Re-export `gio::Cancellable`, it provides a way to cancel sync operations, i.e
+/// `FpDevice::enroll_sync`
+pub use gio::Cancellable;
+/// Re-export `glib::Error`, it provides a way to pass enroll dates to `FpPrint` metadata
+pub use glib::Date as GDate;
+/// Re-export `glib::Error`, it provides error handling for sync operations
+pub use glib::Error as GError;
+
+pub use context::FpContext;
+pub use device::{FpDevice, FpEnrollProgress, FpMatchCb};
+pub use finger::FpFinger;
+pub use image::FpImage;
+pub use print::FpPrint;
 
 #[cfg(test)]
 mod tests {
 
-    use std::{cell::RefCell, rc::Rc};
+    use std::io::{Read, Write};
 
-    use crate::{context::FpContext, device::FpDevice, error::GError, print::FpPrint};
-    struct UserData {
-        _count: u32,
-        _name: String,
-    }
-    fn generate_print<'a>(dev: &'a FpDevice, metadata: &'static str) -> FpPrint<'a> {
-        let user_data = UserData {
-            _count: 304,
-            _name: "Donda".into(),
-        };
+    use crate::{FpContext, FpDevice, FpPrint};
 
-        let user_data = Rc::new(RefCell::new(user_data));
-
-        let template = FpPrint::new(&dev);
-        template.set_username(metadata);
-        let print1 = dev
-            .enroll(template, Some(callback_fn), Some(user_data.clone()))
-            .unwrap();
-        println!("{}", user_data.borrow()._count);
-
-        return print1;
-    }
-
-    fn callback_fn(
-        device: &FpDevice,
-        completed_stages: i32,
-        _print: FpPrint,
-        _error: Option<GError>,
-        _user_data: &Option<Rc<RefCell<UserData>>>,
-    ) {
-        if let Some(user_data) = _user_data {
-            user_data.borrow_mut()._count += 1;
-            // Mutate the user data
-        }
-        println!(
-            "Enrolling: {} of {}",
-            completed_stages,
-            device.get_nr_enroll_stages()
-        );
-    }
-
-    fn match_cb_function(
-        _device: &FpDevice,                         // The fingerprint scanner device
-        matched_print: Option<FpPrint>,             // The matched print, if any.
-        _new_print: FpPrint,                        // New print scanned.
-        _error: Option<GError>,                     // Optinal error in case of an error.
-        match_data: &Option<Rc<RefCell<UserData>>>, // User data can be any data type.
-    ) {
-        if let Some(user_data) = match_data {
-            user_data.borrow_mut()._count += 1;
-            user_data.borrow_mut()._name = "Kanye".into();
-        }
-        if matched_print.is_some() {
-            println!("Found matched print!");
-        }
-    }
-    // #[test]
-    fn ident_test() {
+    #[test]
+    fn get_names() {
         let ctx = FpContext::new();
-        let dev = match ctx.get_devices().iter().next() {
-            Some(dev) => dev,
-            None => {
-                return;
-            }
-        }; // Throws errors if no device is connected
-        let f = dev.get_features();
-        println!("{:?}", f);
+        let devices = ctx.devices();
+        let dev = devices.get(0).unwrap();
 
-        dev.open().unwrap(); // Open the device
+        dev.open_sync(None).unwrap();
+        let mut prints = Vec::new();
 
-        let prints = vec![generate_print(&dev, "First print"), generate_print(&dev, "Second print")];
+        for i in 0..3 {
+            save_prints(&dev, i);
+        }
 
-        let mut matched_print = FpPrint::new(&dev);
-        matched_print.set_username("Some username should be here");
+        for i in 0..3 {
+            let print = read_prints(i);
+            prints.push(print);
+        }
 
-        let res = dev
-            .identify(
-                prints,
-                Some(match_cb_function),
-                None,
-                Some(&mut matched_print),
-            )
+        let mut new_print = FpPrint::new(&dev);
+        let matched = dev
+            .identify_sync(&prints, None, Some(match_cb), None, Some(&mut new_print))
             .unwrap();
 
-        if let Some(print) = res {
-            if let Some(name) = print.get_username() {
-                println!("Found matching fingerprint for username \"{}\"", name);
-            }
+        if matched.is_some() {
+            println!("Matched");
         } else {
-            println!("No matching fingerprint found");
+            println!("Not matched");
+        }
+    }
+    pub fn _enroll_print(dev: &FpDevice) -> FpPrint {
+        let template = FpPrint::new(&dev);
+        let print = dev.enroll_sync(template, None, Some(enroll_cb), None);
+        print.unwrap()
+    }
+    pub fn save_prints(dev: &FpDevice, id: u32) {
+        let template = FpPrint::new(&dev);
+        let print = dev
+            .enroll_sync(template, None, Some(enroll_cb), None)
+            .unwrap();
+        let data = print.serialize().unwrap();
+        let name = format!("prints/print{}", id);
+        let mut file = std::fs::File::create(name).unwrap();
+        file.write_all(&data).unwrap();
+    }
+    pub fn read_prints(id: u32) -> FpPrint {
+        let name = format!("prints/print{}", id);
+        let mut file = std::fs::File::open(name).unwrap();
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf).unwrap();
+
+        FpPrint::deserialize(&buf).unwrap()
+    }
+    pub fn enroll_cb(
+        _device: &FpDevice,
+        enroll_stage: i32,
+        _print: Option<FpPrint>,
+        _error: Option<glib::Error>,
+        _data: &Option<i32>,
+    ) -> () {
+        println!("Enroll stage: {}", enroll_stage);
+    }
+    pub fn match_cb(
+        _device: &FpDevice,
+        matched_print: Option<FpPrint>,
+        _print: FpPrint,
+        _error: Option<glib::Error>,
+        _data: &Option<i32>,
+    ) -> () {
+        if matched_print.is_some() {
+            println!("Matched");
+        } else {
+            println!("Not matched");
         }
     }
 }

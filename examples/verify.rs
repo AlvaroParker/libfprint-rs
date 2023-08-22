@@ -1,61 +1,56 @@
-use std::{fs::File, io::Read};
-
-use libfprint_rs::{FpContext, FpDevice, FpPrint, GError};
+use libfprint_rs::{FpContext, FpDevice, FpPrint};
 
 fn main() {
-    let context = FpContext::new();
-    let devices = context.get_devices();
+    // Get devices
+    let ctx = FpContext::new();
+    let devices = ctx.devices();
+    let dev = devices.get(0).unwrap();
+    dev.open_sync(None).unwrap();
 
-    let dev = match devices.iter().next() {
-        Some(dev) => dev,
-        None => {
-            eprintln!("No devices detected.");
-            std::process::exit(1);
-        }
-    };
-    let print_matched = verify(dev).unwrap();
+    // Create a template print
+    let template = FpPrint::new(&dev);
+    let enrolled_print = dev
+        .enroll_sync(template, None, Some(progress_cb), None)
+        .unwrap();
 
-    if print_matched {
-        println!("Print matched");
-    } else {
-        println!("Prints don't match!!");
-    }
-}
+    // New print where we will store the next print
+    let mut new_print = FpPrint::new(&dev);
 
-fn verify<'a>(dev: FpDevice<'a>) -> Result<bool, GError<'a>> {
-    if !dev.is_open() {
-        dev.open()?;
-    };
-
-    let mut buf = Vec::new();
-    let mut raw_print = File::open("examples/print").unwrap();
-    raw_print.read_to_end(&mut buf).unwrap();
-
-    let enrolled_print = FpPrint::deserialize(&buf).unwrap();
-    let mut scanned_print = FpPrint::new(&dev);
-
+    // Verify if the next print matches the previously enrolled print
     let matched = dev
-        .verify(
-            enrolled_print,
-            Some(verify_callback),
+        .verify_sync(
+            &enrolled_print,
             None,
-            Some(&mut scanned_print),
+            Some(match_cb),
+            None,
+            Some(&mut new_print),
         )
         .unwrap();
-    Ok(matched)
+    if matched {
+        println!("Matched again");
+    }
 }
 
-fn verify_callback(
-    _device: &FpDevice,             // The fingerprint scanner device
-    matched_print: Option<FpPrint>, // The matched print, if any.
-    _new_print: FpPrint,            // New print scanned.
-    error: Option<GError>,          // Error, if any.
-    _match_data: &Option<()>,
-) {
-    if let Some(_matched_print) = matched_print {
-        println!("Found matched print!");
-    }
-    if let Some(err) = error {
-        eprintln!("Error: {}", err);
+pub fn progress_cb(
+    _device: &FpDevice,
+    enroll_stage: i32,
+    _print: Option<FpPrint>,
+    _error: Option<glib::Error>,
+    _: &Option<()>,
+) -> () {
+    println!("Enroll stage: {}", enroll_stage);
+}
+
+pub fn match_cb(
+    _device: &FpDevice,
+    matched_print: Option<FpPrint>,
+    _print: FpPrint,
+    _error: Option<glib::Error>,
+    _data: &Option<()>,
+) -> () {
+    if matched_print.is_some() {
+        println!("Matched");
+    } else {
+        println!("Not matched");
     }
 }

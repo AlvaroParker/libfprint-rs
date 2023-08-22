@@ -1,48 +1,47 @@
-use libfprint_rs::{FpContext, FpDevice, FpPrint, GError};
+use std::sync::{Arc, Mutex};
+
+use libfprint_rs::{FpContext, FpDevice, FpFinger, FpPrint};
 
 fn main() {
-    let context = FpContext::new();
-    let devices = context.get_devices();
+    // Get context
+    let ctx = FpContext::new();
+    // Collect connected devices
+    let devices = ctx.devices();
 
-    let dev = match devices.iter().next() {
-        Some(dev) => dev,
-        None => {
-            eprintln!("No devices detected.");
-            std::process::exit(1);
-        }
-    };
+    // Get the first connected device
+    let dev = devices.get(0).unwrap();
 
-    let print = enroll(dev);
-    if let Ok(print) = print {
-        let username = print.get_username().unwrap();
-        println!("User provided username: \"{}\"", username);
-    }
+    // Open the device to start operations
+    dev.open_sync(None).unwrap();
+
+    // Create a template print
+    let template = FpPrint::new(&dev);
+    template.set_finger(FpFinger::RightRing);
+    template.set_username("test");
+
+    // User data that we will use on the callback function,
+    // to mutate the value of a counter, it must be wrapped in an Arc<Mutex<T>>
+    let counter = Arc::new(Mutex::new(0));
+
+    // Get the new print from the user
+    let _new_print = dev
+        .enroll_sync(template, None, Some(progress_cb), Some(counter.clone()))
+        .unwrap();
+
+    // Get the total of time the enroll callback was called
+    println!("Total enroll stages: {}", counter.lock().unwrap());
 }
 
-fn enroll<'a>(dev: FpDevice<'a>) -> Result<FpPrint<'a>, GError<'static>> {
-    if !dev.is_open() {
-        dev.open()?;
-    };
-
-    let template_print = FpPrint::new(&dev);
-    template_print.set_username("MyUsername");
-
-    dev.enroll(template_print, Some(enroll_callback), None)
-}
-
-fn enroll_callback(
-    device: &FpDevice,
-    completed_stages: i32,
-    _print: FpPrint,
-    error: Option<GError>,
-    _user_data: &Option<()>,
-) {
-    println!(
-        "Enrolling ... {} of {}",
-        completed_stages,
-        device.get_nr_enroll_stages()
-    );
-    if let Some(err) = error {
-        eprintln!("Error: {}", err);
+pub fn progress_cb(
+    _device: &FpDevice,
+    enroll_stage: i32,
+    _print: Option<FpPrint>,
+    _error: Option<glib::Error>,
+    data: &Option<Arc<Mutex<i32>>>,
+) -> () {
+    if let Some(data) = data {
+        let mut d = data.lock().unwrap();
+        *d += 1;
     }
+    println!("Enroll stage: {}", enroll_stage);
 }
