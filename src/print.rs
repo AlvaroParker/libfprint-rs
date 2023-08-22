@@ -18,7 +18,8 @@ wrapper! {
 }
 
 impl FpPrint {
-    /// Create a new `FpPrint`. This is only useful to prepare an enrollment of a new print using `FpDevice::enroll_sync`. For this you should first create a new print, fill in the relevant metadata, and then start enrollment.
+    /// Create a new `FpPrint`. This is only useful to prepare an enrollment of a new print using `FpDevice::enroll_sync`.
+    /// For this you should first create a new print, fill in the relevant metadata, and then start the enrollment
     pub fn new(dev: &FpDevice) -> Self {
         unsafe {
             let ptr = libfprint_sys::fp_print_new(dev.to_glib_none().0);

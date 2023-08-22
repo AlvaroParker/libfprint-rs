@@ -309,7 +309,7 @@ impl FpDevice {
         match_data: Option<T>,
         print: Option<&mut FpPrint>,
     ) -> Result<Option<FpPrint>, crate::GError> {
-        // Box the function content and the data, get the pointer. If no function is provided
+        // Arc the function content and the data, get the pointer. If no function is provided
         // then a null pointer is returned.
 
         use glib::translate::ToGlibContainerFromSlice;

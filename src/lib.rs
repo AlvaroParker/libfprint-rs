@@ -5,8 +5,12 @@ mod image;
 mod print;
 
 pub use gio::traits::CancellableExt;
+/// Re-export `gio::Cancellable`, it provides a way to cancel sync operations, i.e
+/// `FpDevice::enroll_sync`
 pub use gio::Cancellable;
+/// Re-export `glib::Error`, it provides a way to pass enroll dates to `FpPrint` metadata
 pub use glib::Date as GDate;
+/// Re-export `glib::Error`, it provides error handling for sync operations
 pub use glib::Error as GError;
 
 pub use context::FpContext;
