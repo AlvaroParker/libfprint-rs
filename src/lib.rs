@@ -51,7 +51,7 @@ mod tests {
             println!("Not matched");
         }
     }
-    pub fn enroll_print(dev: &FpDevice) -> FpPrint {
+    pub fn _enroll_print(dev: &FpDevice) -> FpPrint {
         let template = FpPrint::new(&dev);
         let print = dev.enroll_sync(template, None, Some(enroll_cb), None);
         print.unwrap()
