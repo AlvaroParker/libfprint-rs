@@ -40,6 +40,14 @@ pub(crate) struct UserData<F, T> {
     data: Option<T>,
 }
 
+impl<F, T> Drop for UserData<F, T> {
+    fn drop(&mut self) {
+        if !self.data.is_none() {
+            drop(self.data.take())
+        }
+    }
+}
+
 macro_rules! fn_pointer {
     ($function:ident, $struct:ident) => {{
         let ptr: *mut std::ffi::c_void = match $function {
@@ -48,8 +56,8 @@ macro_rules! fn_pointer {
                     function: cb,
                     data: $struct,
                 };
-                let boxed = std::boxed::Box::new(data);
-                std::boxed::Box::into_raw(boxed).cast()
+                let boxed = std::sync::Arc::new(data);
+                std::sync::Arc::into_raw(boxed) as *mut std::ffi::c_void
             }
             None => std::ptr::null_mut(),
         };

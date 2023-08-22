@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use glib::translate::{FromGlibPtrBorrow, FromGlibPtrNone};
 
 use crate::print::FpPrint;
@@ -20,7 +22,7 @@ pub(crate) extern "C" fn fp_enroll_progress<F, T>(
         // used here. After the callback is called, the pointer is forgotten. Then
         // back in FpDevice::enroll_sync, the pointer is dropped. So we are the only
         // "owners" of the pointer. The user does not have access to this pointer
-        let callback_data: Box<UserData<F, T>> = unsafe { Box::from_raw(user_data.cast()) };
+        let callback_data: Arc<UserData<F, T>> = unsafe { Arc::from_raw(user_data.cast()) };
 
         // We borrow the device
         let device = unsafe { FpDevice::from_glib_borrow(device) };
@@ -55,7 +57,7 @@ pub(crate) extern "C" fn fp_match_cb<F, T>(
         // Safety: We are the only ones who have access to the pointer,
         // which is created either at verify_sync or identify_sync. Either way, the pointer is
         // forgotten after the callback is called, so we aer the only "owners" of the pointer.
-        let callback_data: Box<UserData<F, T>> = unsafe { Box::from_raw(user_data.cast()) };
+        let callback_data: Arc<UserData<F, T>> = unsafe { Arc::from_raw(user_data.cast()) };
 
         let device = unsafe { FpDevice::from_glib_none(device) };
 

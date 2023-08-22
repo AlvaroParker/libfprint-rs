@@ -18,7 +18,9 @@ pub use print::FpPrint;
 #[cfg(test)]
 mod tests {
 
-    use crate::{FpContext, FpDevice, FpFinger, FpPrint};
+    use std::io::{Read, Write};
+
+    use crate::{FpContext, FpDevice, FpPrint};
 
     #[test]
     fn get_names() {
@@ -27,16 +29,50 @@ mod tests {
         let dev = devices.get(0).unwrap();
 
         dev.open_sync(None).unwrap();
-        let print = FpPrint::new(&dev);
-        print.set_finger(FpFinger::RightRing);
-        print.set_username("testing_username");
+        let mut prints = Vec::new();
 
-        let print = dev.enroll_sync(print, None, Some(enroll_cb), Some(10));
-        if let Ok(print) = print {
-            if print.image().is_none() {
-                println!("Failed to get image from the scanned print");
-            }
+        for i in 0..3 {
+            save_prints(&dev, i);
         }
+
+        for i in 0..3 {
+            let print = read_prints(i);
+            prints.push(print);
+        }
+
+        let mut new_print = FpPrint::new(&dev);
+        let matched = dev
+            .identify_sync(&prints, None, Some(match_cb), None, Some(&mut new_print))
+            .unwrap();
+
+        if matched.is_some() {
+            println!("Matched");
+        } else {
+            println!("Not matched");
+        }
+    }
+    pub fn enroll_print(dev: &FpDevice) -> FpPrint {
+        let template = FpPrint::new(&dev);
+        let print = dev.enroll_sync(template, None, Some(enroll_cb), None);
+        print.unwrap()
+    }
+    pub fn save_prints(dev: &FpDevice, id: u32) {
+        let template = FpPrint::new(&dev);
+        let print = dev
+            .enroll_sync(template, None, Some(enroll_cb), None)
+            .unwrap();
+        let data = print.serialize().unwrap();
+        let name = format!("prints/print{}", id);
+        let mut file = std::fs::File::create(name).unwrap();
+        file.write_all(&data).unwrap();
+    }
+    pub fn read_prints(id: u32) -> FpPrint {
+        let name = format!("prints/print{}", id);
+        let mut file = std::fs::File::open(name).unwrap();
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf).unwrap();
+
+        FpPrint::deserialize(&buf).unwrap()
     }
     pub fn enroll_cb(
         _device: &FpDevice,
@@ -47,7 +83,7 @@ mod tests {
     ) -> () {
         println!("Enroll stage: {}", enroll_stage);
     }
-    pub fn _match_cb(
+    pub fn match_cb(
         _device: &FpDevice,
         matched_print: Option<FpPrint>,
         _print: FpPrint,

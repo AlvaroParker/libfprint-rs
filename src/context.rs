@@ -1,4 +1,3 @@
-use glib::translate::FromGlibPtrArrayContainerAsVec;
 use glib::{translate::ToGlibPtr, wrapper};
 
 use crate::FpDevice;
@@ -32,11 +31,13 @@ impl FpContext {
     /// let devices = context.devices();
     /// ```
     pub fn devices(&self) -> Vec<FpDevice> {
+        use glib::translate::FromGlibPtrContainer;
+
         unsafe {
             let devs = libfprint_sys::fp_context_get_devices(self.to_glib_none().0);
 
             let devs = devs.cast::<glib::ffi::GPtrArray>();
-            FromGlibPtrArrayContainerAsVec::from_glib_none_as_vec(devs)
+            FromGlibPtrContainer::from_glib_none(devs)
         }
     }
 

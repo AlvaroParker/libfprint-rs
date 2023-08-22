@@ -110,6 +110,10 @@ impl FpDevice {
         progress_cb: Option<FpEnrollProgress<T>>,
         progress_data: Option<T>,
     ) -> Result<FpPrint, crate::GError> {
+        use std::sync::Arc;
+
+        use crate::device::UserData;
+
         let mut error = std::ptr::null_mut();
 
         let raw_dev = self.to_glib_none().0;
@@ -135,7 +139,8 @@ impl FpDevice {
         };
 
         if !user_ptr.is_null() {
-            drop(unsafe { Box::from_raw(user_ptr) });
+            let _: Arc<UserData<FpEnrollProgress<T>, T>> =
+                unsafe { Arc::from_raw(user_ptr.cast()) };
         }
 
         if !ptr.is_null() {
@@ -306,17 +311,13 @@ impl FpDevice {
     ) -> Result<Option<FpPrint>, crate::GError> {
         // Box the function content and the data, get the pointer. If no function is provided
         // then a null pointer is returned.
+
+        use glib::translate::ToGlibContainerFromSlice;
         let ptr = fn_pointer!(match_cb, match_data);
 
         // Create a GPtrArray from the vector of prints
-        let raw_prints = unsafe {
-            let raw_prints = glib::ffi::g_ptr_array_new();
-            for print in prints {
-                let raw_print: *mut libfprint_sys::FpPrint = print.to_glib_none().0;
-                glib::ffi::g_ptr_array_add(raw_prints, raw_print.cast());
-            }
-            raw_prints
-        };
+        let raw_prints: (*mut glib::ffi::GPtrArray, _) =
+            ToGlibContainerFromSlice::to_glib_container_from_slice(&prints);
 
         let raw_cancel = match cancellable {
             Some(p) => p.to_glib_none().0,
@@ -336,7 +337,7 @@ impl FpDevice {
         let res = unsafe {
             libfprint_sys::fp_device_identify_sync(
                 self.to_glib_none().0,
-                raw_prints.cast(),
+                raw_prints.0.cast(),
                 raw_cancel.cast(),
                 Some(fp_match_cb::<FpMatchCb<T>, T>),
                 ptr,
@@ -345,7 +346,7 @@ impl FpDevice {
                 std::ptr::addr_of_mut!(error),
             )
         };
-        unsafe { libfprint_sys::g_ptr_array_free(raw_prints.cast(), 1) };
+        unsafe { libfprint_sys::g_ptr_array_free(raw_prints.0.cast(), 1) };
 
         match print {
             Some(p) => {
