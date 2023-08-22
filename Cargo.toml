@@ -10,7 +10,7 @@ documentation = "https://docs.rs/libfprint-rs"
 
 
 [dependencies]
-libfprint-sys = { path = "libfprint-sys", version = "0.1.7" }
+libfprint-sys = { path = "libfprint-sys", version = "0.1.8" }
 gio = "0.18.1"
 glib = "0.18.1"
 
