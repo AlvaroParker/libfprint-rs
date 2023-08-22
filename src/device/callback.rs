@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{os::raw::c_int, os::raw::c_void, sync::Arc};
 
 use glib::translate::{FromGlibPtrBorrow, FromGlibPtrNone};
 
@@ -8,9 +8,9 @@ use super::{FpDevice, UserData};
 
 pub(crate) extern "C" fn fp_enroll_progress<F, T>(
     device: *mut libfprint_sys::FpDevice,
-    completed_stages: libfprint_sys::gint,
+    completed_stages: c_int,
     print: *mut libfprint_sys::FpPrint, // The last scanned print
-    user_data: libfprint_sys::gpointer,
+    user_data: *mut c_void,
     error: *mut libfprint_sys::GError,
 ) where
     F: Fn(&FpDevice, i32, Option<FpPrint>, Option<glib::Error>, &Option<T>) -> (),
@@ -47,7 +47,7 @@ pub(crate) extern "C" fn fp_match_cb<F, T>(
     device: *mut libfprint_sys::FpDevice,
     match_print: *mut libfprint_sys::FpPrint,
     print: *mut libfprint_sys::FpPrint,
-    user_data: libfprint_sys::gpointer,
+    user_data: *mut c_void,
     error: *mut libfprint_sys::GError,
 ) where
     F: Fn(&FpDevice, Option<FpPrint>, FpPrint, Option<glib::Error>, &Option<T>),
