@@ -91,7 +91,7 @@ impl FpDevice {
     /// ```no_run
     /// use libfprint_rs::{FpDevice, FpContext, FpPrint};
     ///
-    /// pub fn enroll_cb(device: &FpDevice,enroll_stage: i32, print: Option<FpPrint>, error: Option<glib::Error>, data: &Option<i32>,) -> () {
+    /// pub fn enroll_cb(device: &FpDevice,enroll_stage: i32, print: Option<FpPrint>, error: Option<libfprint_rs::GError>, data: &Option<i32>,) -> () {
     ///     println!("Enroll stage: {}", enroll_stage);
     /// }
     ///

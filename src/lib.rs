@@ -46,7 +46,7 @@ pub use gio::traits::CancellableExt;
 pub use gio::Cancellable;
 /// Re-export `glib::Error`, it provides a way to pass enroll dates to `FpPrint` metadata
 pub use glib::Date as GDate;
-/// Re-export `glib::Error`, it provides error handling for sync operations
+/// Re-export `glib::Error`, it provides error handling for sync operations.
 pub use glib::Error as GError;
 
 pub use context::FpContext;
