@@ -1,3 +1,39 @@
+//! Rust bindings for [libfprint](https://gitlab.freedesktop.org/libfprint/libfprint).
+//!
+//! This crate provides a wrapper around the libfprint library, which allows you to use fingerprint scanners in your Rust applications.
+//!
+//! # Enrolling a new fingerprint
+//! ```rust
+//! use libfprint_rs::{FpContext, FpPrint};
+//!
+//! let context = FpContext::new();
+//! let devices = context.get_devices();
+//!
+//! let context = FpContext::new();
+//! let devices = context.devices();
+//!
+//! let dev = devices.get(0).unwrap();
+//! dev.open_sync(None)?;
+//!
+//! let template = FpPrint::new(&dev);
+//! template.set_username("Bruce Banner");
+//!
+//! let print = dev.enroll_sync(template, None, None, None::<()>)?;
+//! ```
+//! # Verifying a fingerprint
+//! ```rust
+//! let context = FpContext::new();
+//! let devices = context.devices();
+//!
+//! let dev = devices.get(0).unwrap();
+//! dev.open_sync(None)?;
+//!
+//! let enrolled_print = load_print_from_file();
+//!
+//! let match_res = dev.verify_sync(enrolled_print, None, None, None::<()>, None)?;
+//! ```
+//! For more examples on how to use this crate, please refer to the [github oficial repository](https://github.com/AlvaroParker/libfprint-rs)
+//! and the [documentation](https://docs.rs/libfprint-rs/latest/libfprint_rs/).
 mod context;
 mod device;
 mod finger;
