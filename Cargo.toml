@@ -6,8 +6,8 @@ edition = "2021"
 description = "Rust library for accesing fingerprint devices."
 keywords = ["libfprint", "sensor", "hardware", "linux"]
 license = "MIT"
-documentation = "https://docs.rs/libfprint-rs"
-
+documentation = "https://alvaroparker.github.io/libfprint-docs/libfprint_rs/index.html"
+exclude = [".github"]
 
 [dependencies]
 libfprint-sys = { path = "libfprint-sys", version = "0.1.8" }
