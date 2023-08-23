@@ -43,7 +43,3 @@ Distributed under the [MIT License](LICENSE).
 ### Status
 
 Currently libfprint-rs is WIP.
-
-Todo:
-
-- Handle fingerprint initialized with `FpPrint::enroll` passed as a template to `FpPrint::enroll`, which currently causes leaks since the inner print is dropped without check.
