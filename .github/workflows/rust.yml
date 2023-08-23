@@ -1,0 +1,24 @@
+name: Rust docs
+on: workflow_dispatch
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Commit report
+      run: |
+        cargo doc --no-deps
+        git clone https://github.com/AlvaroParker/libfprint-docs.git
+        rm -rf libfprint-docs/*
+        cp -r target/doc/* libfprint-docs/
+        cd libfprint-docs
+        git restore index.html
+        git config --global user.name 'Parker'
+        git config --global user.email 'alvaroparker@users.noreply.github.com'
+        git remote set-url origin https://x-access-token:${{ secrets.DOC_K }}@github.com/alvaroparker/libfprint-docs
+        git add .
+        git commit -m "Automated docs"
+        git push origin main
