@@ -1,8 +1,10 @@
-use crate::device::{callback::fp_match_cb, fn_pointer};
+use crate::device::{callback::fp_match_cb, fn_pointer, UserData};
 use crate::image::FpImage;
 use gio::Cancellable;
 use glib::translate::FromGlibPtrNone;
 use glib::translate::{FromGlibPtrFull, ToGlibPtr};
+use glib::ObjectExt;
+use std::sync::Arc;
 
 use crate::print::FpPrint;
 
@@ -110,11 +112,9 @@ impl FpDevice {
         progress_cb: Option<FpEnrollProgress<T>>,
         progress_data: Option<T>,
     ) -> Result<FpPrint, crate::GError> {
-        use std::sync::Arc;
-
-        use crate::device::UserData;
-
         let mut error = std::ptr::null_mut();
+
+        let template = self.check_print(template);
 
         let raw_dev = self.to_glib_none().0;
         let raw_cancel = match cancellable {
@@ -125,7 +125,7 @@ impl FpDevice {
         let user_ptr = fn_pointer!(progress_cb, progress_data);
 
         // Raw template: transfer full
-        let raw_template = template.to_glib_full();
+        let raw_template: *mut libfprint_sys::FpPrint = template.to_glib_full();
 
         let ptr = unsafe {
             libfprint_sys::fp_device_enroll_sync(
@@ -145,6 +145,9 @@ impl FpDevice {
 
         if !ptr.is_null() {
             let fp = unsafe { FpPrint::from_glib_full(ptr) };
+            unsafe {
+                fp.set_data("set", true);
+            }
             return Ok(fp);
         } else {
             return Err(unsafe { glib::Error::from_glib_full(error.cast()) });
@@ -183,7 +186,7 @@ impl FpDevice {
         cancellable: Option<gio::Cancellable>,
         match_cb: Option<FpMatchCb<T>>,
         match_data: Option<T>,
-        print: Option<&mut FpPrint>, // TODO: This variable is causing memory leaks
+        print: Option<&mut FpPrint>, // TODO: Handle initialized
     ) -> Result<bool, crate::GError> {
         let ptr = fn_pointer!(match_cb, match_data);
         let mut error = std::ptr::null_mut();
@@ -307,7 +310,7 @@ impl FpDevice {
         cancellable: Option<&Cancellable>,
         match_cb: Option<FpMatchCb<T>>,
         match_data: Option<T>,
-        print: Option<&mut FpPrint>,
+        print: Option<&mut FpPrint>, // TODO: Handle initialized
     ) -> Result<Option<FpPrint>, crate::GError> {
         // Arc the function content and the data, get the pointer. If no function is provided
         // then a null pointer is returned.
@@ -414,5 +417,28 @@ impl FpDevice {
     /// Clear sensor storage.
     pub fn clear_storage_sync() {
         unimplemented!()
+    }
+
+    fn check_print(&self, template: FpPrint) -> FpPrint {
+        // This checks if the template was created with FpPrint::new() or not
+        let set: Option<bool> = unsafe { template.steal_data("set") };
+        if set == Some(true) {
+            let empty_template = FpPrint::new(&self);
+            if let Some(username) = template.username() {
+                empty_template.set_username(&username);
+            }
+            if let Some(description) = template.description() {
+                empty_template.set_description(&description);
+            }
+            empty_template.set_finger(template.finger());
+            if let Some(date) = template.enroll_date() {
+                empty_template.set_enroll_date(date);
+            }
+            drop(template);
+            return empty_template;
+        } else {
+            println!("Not initialized");
+            return template;
+        };
     }
 }

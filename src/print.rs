@@ -2,7 +2,7 @@
 use glib::{
     translate::FromGlibPtrFull,
     translate::{FromGlibContainer, FromGlibPtrNone, ToGlibPtr},
-    wrapper,
+    wrapper, ObjectExt,
 };
 
 use crate::{device::FpDevice, finger::FpFinger, image::FpImage};
@@ -175,7 +175,9 @@ impl FpPrint {
         if ptr.is_null() {
             Err(unsafe { glib::Error::from_glib_full(ptr.cast()) })
         } else {
-            Ok(unsafe { FpPrint::from_glib_full(ptr) })
+            let print = unsafe { FpPrint::from_glib_full(ptr) };
+            unsafe { print.set_data("set", true) };
+            Ok(print)
         }
     }
 }
