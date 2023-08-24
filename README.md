@@ -10,14 +10,14 @@ This package requires `libfprint-2` to be installed in your system alongside `li
 
 Add `libfprint-rs` as a dependency in `Cargo.toml`
 
-```
+```toml
 [dependencies]
-libfprint-rs = "0.1.10"
+libfprint-rs = "0.2.0"
 ```
 
 Or using `cargo`
 
-```
+```bash
 cargo add libfprint-rs
 ```
 
