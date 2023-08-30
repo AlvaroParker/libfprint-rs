@@ -50,7 +50,7 @@ impl FpDevice {
             _ => panic!("Unknown finger status"),
         }
     }
-
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     /// Gets the FpDeviceFeature's supported by the device .
     pub fn features(&self) -> Vec<FpDeviceFeature> {
         // Unmask the features bitfield and return a vector of FpDeviceFeature
@@ -70,6 +70,7 @@ impl FpDevice {
         }
         features
     }
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     /// Checks if device supports the requested FpDeviceFeature.
     pub fn has_feature(&self, feature: FpDeviceFeature) -> bool {
         let res =

@@ -233,6 +233,7 @@ impl FpDevice {
         // Else there must be a response
         return Ok(matched == glib::ffi::GTRUE);
     }
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     /// Prepare device for suspend.
     pub fn suspend_sync(&self, cancellable: Option<&Cancellable>) -> Result<(), crate::GError> {
         let raw_cancel = match cancellable {
@@ -255,6 +256,7 @@ impl FpDevice {
         Ok(())
     }
 
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     /// Resume device after suspend.
     pub fn resume_sync(&self, cancellable: Option<&Cancellable>) -> Result<(), crate::GError> {
         let raw_cancel = match cancellable {
