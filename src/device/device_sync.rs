@@ -439,7 +439,6 @@ impl FpDevice {
             drop(template);
             return empty_template;
         } else {
-            println!("Not initialized");
             return template;
         };
     }
