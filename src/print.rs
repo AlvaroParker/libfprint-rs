@@ -16,7 +16,8 @@ wrapper! {
         type_ => || libfprint_sys::fp_print_get_type() as usize,
     }
 }
-
+unsafe impl Send for FpPrint {}
+unsafe impl Sync for FpPrint {}
 impl FpPrint {
     /// Create a new `FpPrint`. This is only useful to prepare an enrollment of a new print using `FpDevice::enroll_sync`.
     /// For this you should first create a new print, fill in the relevant metadata, and then start the enrollment
