@@ -183,7 +183,7 @@ impl FpDevice {
     pub fn verify_sync<T>(
         &self,
         enrolled_print: &FpPrint,
-        cancellable: Option<gio::Cancellable>,
+        cancellable: Option<&Cancellable>,
         match_cb: Option<FpMatchCb<T>>,
         match_data: Option<T>,
         print: Option<&mut FpPrint>, // TODO: Handle initialized
