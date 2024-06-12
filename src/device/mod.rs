@@ -32,9 +32,6 @@ wrapper! {
     }
 }
 
-unsafe impl Send for FpDevice {}
-unsafe impl Sync for FpDevice {}
-
 pub(crate) struct UserData<F, T> {
     function: F,
     data: Option<T>,
