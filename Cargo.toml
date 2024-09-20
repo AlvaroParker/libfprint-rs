@@ -1,12 +1,12 @@
 [package]
 name = "libfprint-rs"
 repository = "https://github.com/alvaroparker/libfprint-rs"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 description = "Rust library for accesing fingerprint devices."
 keywords = ["libfprint", "sensor", "hardware", "linux"]
 license = "MIT"
-documentation = "https://alvaroparker.github.io/libfprint-docs/libfprint_rs/index.html"
+documentation = "https://docs.rs/libfprint-rs/latest/libfprint_rs/index.html"
 exclude = [".github"]
 
 [dependencies]

@@ -12,7 +12,7 @@ Add `libfprint-rs` as a dependency in `Cargo.toml`
 
 ```toml
 [dependencies]
-libfprint-rs = "0.2.0"
+libfprint-rs = "0.2.3"
 ```
 
 Or using `cargo`
