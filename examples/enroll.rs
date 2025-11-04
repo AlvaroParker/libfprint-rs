@@ -9,13 +9,13 @@ fn main() {
     let devices = ctx.devices();
 
     // Get the first connected device
-    let dev = devices.get(0).unwrap();
+    let dev = devices.first().unwrap();
 
     // Open the device to start operations
     dev.open_sync(None).unwrap();
 
     // Create a template print
-    let template = FpPrint::new(&dev);
+    let template = FpPrint::new(dev);
     template.set_finger(FpFinger::RightRing);
     template.set_username("test");
 
@@ -38,7 +38,7 @@ pub fn progress_cb(
     _print: Option<FpPrint>,
     _error: Option<glib::Error>,
     data: &Option<Arc<Mutex<i32>>>,
-) -> () {
+) {
     if let Some(data) = data {
         let mut d = data.lock().unwrap();
         *d += 1;

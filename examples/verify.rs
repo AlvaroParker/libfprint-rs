@@ -4,17 +4,17 @@ fn main() {
     // Get devices
     let ctx = FpContext::new();
     let devices = ctx.devices();
-    let dev = devices.get(0).unwrap();
+    let dev = devices.first().unwrap();
     dev.open_sync(None).unwrap();
 
     // Create a template print
-    let template = FpPrint::new(&dev);
+    let template = FpPrint::new(dev);
     let enrolled_print = dev
         .enroll_sync(template, None, Some(progress_cb), None)
         .unwrap();
 
     // New print where we will store the next print
-    let mut new_print = FpPrint::new(&dev);
+    let mut new_print = FpPrint::new(dev);
 
     // Verify if the next print matches the previously enrolled print
     let matched = dev
@@ -37,7 +37,7 @@ pub fn progress_cb(
     _print: Option<FpPrint>,
     _error: Option<glib::Error>,
     _: &Option<()>,
-) -> () {
+) {
     println!("Enroll stage: {}", enroll_stage);
 }
 
@@ -47,7 +47,7 @@ pub fn match_cb(
     _print: FpPrint,
     _error: Option<glib::Error>,
     _data: &Option<()>,
-) -> () {
+) {
     if matched_print.is_some() {
         println!("Matched");
     } else {

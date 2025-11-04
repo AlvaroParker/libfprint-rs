@@ -1,8 +1,9 @@
 // All methods are declared
 use glib::{
+    object::ObjectExt,
     translate::FromGlibPtrFull,
     translate::{FromGlibContainer, FromGlibPtrNone, ToGlibPtr},
-    wrapper, ObjectExt,
+    wrapper,
 };
 
 use crate::{device::FpDevice, finger::FpFinger, image::FpImage};
@@ -169,11 +170,7 @@ impl FpPrint {
             let ptr = glib::translate::ToGlibPtr::to_glib_none(data);
             let mut error = std::ptr::null_mut();
 
-            libfprint_sys::fp_print_deserialize(
-                ptr.0,
-                (len as usize).try_into().unwrap(),
-                &mut error,
-            )
+            libfprint_sys::fp_print_deserialize(ptr.0, len.try_into().unwrap(), &mut error)
         };
 
         if ptr.is_null() {

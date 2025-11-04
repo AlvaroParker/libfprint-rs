@@ -50,3 +50,9 @@ impl FpContext {
         }
     }
 }
+
+impl Default for FpContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}

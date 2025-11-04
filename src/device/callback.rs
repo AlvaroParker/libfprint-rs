@@ -13,7 +13,7 @@ pub(crate) extern "C" fn fp_enroll_progress<F, T>(
     user_data: *mut c_void,
     error: *mut libfprint_sys::GError,
 ) where
-    F: Fn(&FpDevice, i32, Option<FpPrint>, Option<glib::Error>, &Option<T>) -> (),
+    F: Fn(&FpDevice, i32, Option<FpPrint>, Option<glib::Error>, &Option<T>),
 {
     // If user data is not null, a callback function was provided
     if !user_data.is_null() {
@@ -39,7 +39,7 @@ pub(crate) extern "C" fn fp_enroll_progress<F, T>(
 
         callback_data.callback_enroll(&device, completed_stages, print, error);
 
-        _ = std::mem::forget(callback_data);
+        std::mem::forget(callback_data);
     }
 }
 

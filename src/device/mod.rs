@@ -1,7 +1,7 @@
 mod callback;
-mod device;
 mod device_sync;
 mod enums;
+mod fp_device;
 mod user_data;
 
 pub use device_sync::{FpEnrollProgress, FpMatchCb};
@@ -39,7 +39,7 @@ pub(crate) struct UserData<F, T> {
 
 impl<F, T> Drop for UserData<F, T> {
     fn drop(&mut self) {
-        if !self.data.is_none() {
+        if self.data.is_some() {
             drop(self.data.take())
         }
     }

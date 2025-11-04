@@ -1,8 +1,8 @@
 [package]
 name = "libfprint-rs"
 repository = "https://github.com/alvaroparker/libfprint-rs"
-version = "0.2.3"
-edition = "2021"
+version = "0.3.0"
+edition = "2024"
 description = "Rust library for accesing fingerprint devices."
 keywords = ["libfprint", "sensor", "hardware", "linux"]
 license = "MIT"
@@ -10,9 +10,9 @@ documentation = "https://docs.rs/libfprint-rs/latest/libfprint_rs/index.html"
 exclude = [".github"]
 
 [dependencies]
-libfprint-sys = { path = "libfprint-sys", version = "0.1.8" }
-gio = "0.18.1"
-glib = "0.18.1"
+libfprint-sys = { path = "libfprint-sys", version = "0.2.0" }
+gio = "0.21.4"
+glib = "0.21.4"
 
 [workspace]
 members = ["libfprint-sys"]
