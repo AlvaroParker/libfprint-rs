@@ -1,8 +1,8 @@
 use glib::translate::{FromGlibPtrFull, FromGlibPtrNone, ToGlibPtr};
 
 use super::{
-    enums::{FpDeviceFeature, FpFingerStatus, FpScanType},
     FpDevice,
+    enums::{FpDeviceFeature, FpFingerStatus, FpScanType},
 };
 
 impl FpDevice {
@@ -61,10 +61,10 @@ impl FpDevice {
         } else {
             (0..31).for_each(|i| {
                 let mask = 1 << i;
-                if (mask & x) > 0 {
-                    if let Ok(feature) = FpDeviceFeature::try_from(2_u32.pow(i)) {
-                        features.push(feature);
-                    }
+                if (mask & x) > 0
+                    && let Ok(feature) = FpDeviceFeature::try_from(2_u32.pow(i))
+                {
+                    features.push(feature);
                 }
             });
         }

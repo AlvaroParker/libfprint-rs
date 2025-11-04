@@ -1,9 +1,9 @@
-use crate::device::{callback::fp_match_cb, fn_pointer, UserData};
+use crate::device::{UserData, callback::fp_match_cb, fn_pointer};
 use crate::image::FpImage;
 use gio::Cancellable;
+use glib::object::ObjectExt;
 use glib::translate::FromGlibPtrNone;
 use glib::translate::{FromGlibPtrFull, ToGlibPtr};
-use glib::ObjectExt;
 use std::sync::Arc;
 
 use crate::print::FpPrint;
@@ -148,9 +148,9 @@ impl FpDevice {
             unsafe {
                 fp.set_data("set", true);
             }
-            return Ok(fp);
+            Ok(fp)
         } else {
-            return Err(unsafe { glib::Error::from_glib_full(error.cast()) });
+            Err(unsafe { glib::Error::from_glib_full(error.cast()) })
         }
     }
 
@@ -215,15 +215,11 @@ impl FpDevice {
                 &mut error,
             )
         };
-
-        match print {
-            Some(p) => {
-                if !new_print.is_null() {
-                    *p = unsafe { FpPrint::from_glib_full(new_print) };
-                }
-            }
-            None => {}
-        };
+        if let Some(p) = print
+            && !new_print.is_null()
+        {
+            *p = unsafe { FpPrint::from_glib_full(new_print) };
+        }
 
         // If res is false, the operation failed, so the `error` pointer must be pointing
         // to a valid error
@@ -231,7 +227,7 @@ impl FpDevice {
             return Err(unsafe { glib::Error::from_glib_none(error.cast()) });
         }
         // Else there must be a response
-        return Ok(matched == glib::ffi::GTRUE);
+        Ok(matched == glib::ffi::GTRUE)
     }
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     /// Prepare device for suspend.
@@ -308,7 +304,7 @@ impl FpDevice {
     /// ```
     pub fn identify_sync<T>(
         &self,
-        prints: &Vec<FpPrint>,
+        prints: &[FpPrint],
         cancellable: Option<&Cancellable>,
         match_cb: Option<FpMatchCb<T>>,
         match_data: Option<T>,
@@ -322,7 +318,7 @@ impl FpDevice {
 
         // Create a GPtrArray from the vector of prints
         let raw_prints: (*mut glib::ffi::GPtrArray, _) =
-            ToGlibContainerFromSlice::to_glib_container_from_slice(&prints);
+            ToGlibContainerFromSlice::to_glib_container_from_slice(prints);
 
         let raw_cancel = match cancellable {
             Some(p) => p.to_glib_none().0,
@@ -353,22 +349,19 @@ impl FpDevice {
         };
         unsafe { libfprint_sys::g_ptr_array_free(raw_prints.0.cast(), 1) };
 
-        match print {
-            Some(p) => {
-                if !new_print.is_null() {
-                    *p = unsafe { FpPrint::from_glib_full(new_print) };
-                }
-            }
-            None => {}
+        if let Some(p) = print
+            && !new_print.is_null()
+        {
+            *p = unsafe { FpPrint::from_glib_full(new_print) };
         };
 
         if res == glib::ffi::GFALSE {
             return Err(unsafe { glib::Error::from_glib_full(error.cast()) });
         }
         if print_match.is_null() {
-            return Ok(None);
+            Ok(None)
         } else {
-            return Ok(Some(unsafe { FpPrint::from_glib_full(print_match) }));
+            Ok(Some(unsafe { FpPrint::from_glib_full(print_match) }))
         }
     }
     #[cfg(not(doctest))]
@@ -425,7 +418,7 @@ impl FpDevice {
         // This checks if the template was created with FpPrint::new() or not
         let set: Option<bool> = unsafe { template.steal_data("set") };
         if set == Some(true) {
-            let empty_template = FpPrint::new(&self);
+            let empty_template = FpPrint::new(self);
             if let Some(username) = template.username() {
                 empty_template.set_username(&username);
             }
@@ -437,9 +430,9 @@ impl FpDevice {
                 empty_template.set_enroll_date(date);
             }
             drop(template);
-            return empty_template;
+            empty_template
         } else {
-            return template;
-        };
+            template
+        }
     }
 }

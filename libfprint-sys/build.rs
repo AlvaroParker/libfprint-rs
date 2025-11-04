@@ -9,11 +9,27 @@ fn main() {
         .allowlist_function("fp_context.*")
         .allowlist_function("fp_image.*")
         .allowlist_function("g_ptr_array_free")
+        // GObject types and their get_type functions
         .allowlist_type("FpContextClass")
-        .allowlist_type("FpPrint_autoptr")
+        .allowlist_type("_FpContextClass")
         .allowlist_type("FpDeviceClass")
+        .allowlist_type("_FpDeviceClass")
         .allowlist_type("FpImageClass")
+        .allowlist_type("_FpImageClass")
         .allowlist_type("FpPrintClass")
+        .allowlist_type("_FpPrintClass")
+        // GType functions
+        .allowlist_function("fp_context_get_type")
+        .allowlist_function("fp_device_get_type")
+        .allowlist_function("fp_image_get_type")
+        .allowlist_function("fp_print_get_type")
+        // Other types
+        .allowlist_type("FpPrint_autoptr")
+        .allowlist_type("GType")
+        // Allow all types that start with underscore followed by Fp
+        .allowlist_type("_Fp.*")
+        // Allow autoptr types
+        .allowlist_type(".*_autoptr")
         .clang_args(
             libfprint
                 .include_paths
@@ -21,7 +37,7 @@ fn main() {
                 .map(|path| format!("-I{}", path.to_string_lossy())),
         )
         .header("wrapper.h")
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Unable to generate bindings");
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());

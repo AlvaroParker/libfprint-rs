@@ -40,7 +40,6 @@ mod finger;
 mod image;
 mod print;
 
-pub use gio::traits::CancellableExt;
 /// Re-export `gio::Cancellable`, it provides a way to cancel sync operations, i.e
 /// `FpDevice::enroll_sync`
 pub use gio::Cancellable;
@@ -66,13 +65,13 @@ mod tests {
     fn get_names() {
         let ctx = FpContext::new();
         let devices = ctx.devices();
-        let dev = devices.get(0).unwrap();
+        let dev = devices.first().unwrap();
 
         dev.open_sync(None).unwrap();
         let mut prints = Vec::new();
 
         for i in 0..3 {
-            save_prints(&dev, i);
+            save_prints(dev, i);
         }
 
         for i in 0..3 {
@@ -80,7 +79,7 @@ mod tests {
             prints.push(print);
         }
 
-        let mut new_print = FpPrint::new(&dev);
+        let mut new_print = FpPrint::new(dev);
         let matched = dev
             .identify_sync(&prints, None, Some(match_cb), None, Some(&mut new_print))
             .unwrap();
@@ -92,12 +91,12 @@ mod tests {
         }
     }
     pub fn _enroll_print(dev: &FpDevice) -> FpPrint {
-        let template = FpPrint::new(&dev);
+        let template = FpPrint::new(dev);
         let print = dev.enroll_sync(template, None, Some(enroll_cb), None);
         print.unwrap()
     }
     pub fn save_prints(dev: &FpDevice, id: u32) {
-        let template = FpPrint::new(&dev);
+        let template = FpPrint::new(dev);
         let print = dev
             .enroll_sync(template, None, Some(enroll_cb), None)
             .unwrap();
@@ -120,7 +119,7 @@ mod tests {
         _print: Option<FpPrint>,
         _error: Option<glib::Error>,
         _data: &Option<i32>,
-    ) -> () {
+    ) {
         println!("Enroll stage: {}", enroll_stage);
     }
     pub fn match_cb(
@@ -129,7 +128,7 @@ mod tests {
         _print: FpPrint,
         _error: Option<glib::Error>,
         _data: &Option<i32>,
-    ) -> () {
+    ) {
         if matched_print.is_some() {
             println!("Matched");
         } else {
