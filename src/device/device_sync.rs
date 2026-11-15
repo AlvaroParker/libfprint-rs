@@ -18,7 +18,6 @@ pub type FpMatchCb<T> =
     fn(&FpDevice, Option<FpPrint>, FpPrint, Option<crate::GError>, &Option<T>) -> ();
 
 impl FpDevice {
-    #[cfg(not(doctest))]
     /// Open the device synchronously.
     /// # Example:
     /// ```no_run
@@ -50,7 +49,6 @@ impl FpDevice {
         }
         Ok(())
     }
-    #[cfg(not(doctest))]
     /// Close the device synchronously.
     /// # Example:
     /// ```no_run
@@ -84,7 +82,6 @@ impl FpDevice {
         Ok(())
     }
 
-    #[cfg(not(doctest))]
     /// Enroll a new print.
     /// Enrolls a print, `progress_cb` will be called for each stage of the enrollment process.
     /// # Example:
@@ -154,13 +151,11 @@ impl FpDevice {
         }
     }
 
-    #[cfg(not(doctest))]
     /// Verify a given print synchronously.
-    /// `match_cb` will be called when the verification is done.
+    /// Reports verification results through `match_cb`.
     /// # Example:
-    /// ```no_run
+    /// ```rust,no_run
     /// use libfprint_rs::{FpDevice, FpContext, FpPrint, GError};
-    ///
     /// pub fn match_cb(device: &FpDevice, matched_print: Option<FpPrint>, enrolled_print: FpPrint,
     /// error: Option<GError>, data: &Option<i32>) {
     ///     if matched_print.is_some() {
@@ -171,13 +166,12 @@ impl FpDevice {
     /// let devices = ctx.devices();
     /// let dev = devices.get(0).unwrap();
     /// dev.open_sync(None).unwrap();
-    ///
-    /// let some_print: FpPrint = foreign_function_that_gets_print();
+    /// let some_print = FpPrint::deserialize(&std::fs::read("fingerprint").unwrap()).unwrap();
     /// let mut new_print = FpPrint::new(&dev); // The variable that will hold the new print
     /// let verified = dev.verify_sync(&some_print, None, Some(match_cb), Some(10), Some(&mut
     /// new_print)).unwrap();
     /// if verified {
-    ///    println!("Print verified");println
+    ///    println!("Print verified");
     /// }
     /// ```
     pub fn verify_sync<T>(
@@ -221,12 +215,9 @@ impl FpDevice {
             *p = unsafe { FpPrint::from_glib_full(new_print) };
         }
 
-        // If res is false, the operation failed, so the `error` pointer must be pointing
-        // to a valid error
         if res == glib::ffi::GFALSE {
             return Err(unsafe { glib::Error::from_glib_none(error.cast()) });
         }
-        // Else there must be a response
         Ok(matched == glib::ffi::GTRUE)
     }
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -274,27 +265,23 @@ impl FpDevice {
         }
         Ok(())
     }
-    #[cfg(not(doctest))]
     /// Identify a print synchronously.
     ///
-    /// `match_cb` will be called when a print matches or at the end of the operation.
+    /// Calls `match_cb` for a match or at the end of the operation.
     /// # Example:
-    /// ```no_run
+    /// ```rust,no_run
     /// use libfprint_rs::{FpDevice, FpContext, FpPrint, GError};
-    ///
     /// pub fn match_cb(device: &FpDevice, matched_print: Option<FpPrint>, enrolled_print: FpPrint,
     /// error: Option<GError>, data: &Option<i32>) {
     ///     if matched_print.is_some() {
     ///         println!("Matched print: {:?}", matched_print);
     ///     }
     /// }
-    ///
     /// let ctx = FpContext::new();
     /// let devices = ctx.devices();
     /// let dev = devices.get(0).unwrap();
     /// dev.open_sync(None).unwrap();
-    ///
-    /// let vec_prints: Vec<FpPrint> = function_returning_Vec_prints();
+    /// let vec_prints = dev.list_prints_sync(None).unwrap();
     /// let mut new_print = FpPrint::new(&dev); // The variable that will hold the new print
     /// let print_identified = dev.identify_sync(&vec_prints, None, Some(match_cb), Some(10), Some(&mut
     /// new_print)).unwrap();
@@ -310,9 +297,6 @@ impl FpDevice {
         match_data: Option<T>,
         print: Option<&mut FpPrint>, // TODO: Handle initialized
     ) -> Result<Option<FpPrint>, crate::GError> {
-        // Arc the function content and the data, get the pointer. If no function is provided
-        // then a null pointer is returned.
-
         use glib::translate::ToGlibContainerFromSlice;
         let ptr = fn_pointer!(match_cb, match_data);
 
@@ -364,10 +348,11 @@ impl FpDevice {
             Ok(Some(unsafe { FpPrint::from_glib_full(print_match) }))
         }
     }
-    #[cfg(not(doctest))]
     /// Start an synchronous operation to capture an image.
     /// # Example:
     /// ```no_run
+    /// use libfprint_rs::FpContext;
+    ///
     /// let ctx = FpContext::new();
     /// let devices = ctx.devices();
     /// let dev = devices.get(0).unwrap();
@@ -405,9 +390,35 @@ impl FpDevice {
     pub fn delete_print_sync() {
         unimplemented!()
     }
-    /// List device stored prints synchronously.
-    pub fn list_prints_sync() {
-        unimplemented!()
+    /// Lists the fingerprints stored on an open device.
+    /// Returns an empty vector when the device storage is empty.
+    /// The returned prints remain valid after the device is closed.
+    ///
+    /// Returns an error if the device is closed or does not support listing prints.
+    /// Cancellation requires a linked libfprint version that honors `cancellable` in synchronous listing.
+    pub fn list_prints_sync(
+        &self,
+        cancellable: Option<&Cancellable>,
+    ) -> Result<Vec<FpPrint>, crate::GError> {
+        use glib::translate::FromGlibPtrContainer;
+
+        let raw_cancel: *mut gio::ffi::GCancellable = cancellable.to_glib_none().0;
+        let mut error = std::ptr::null_mut();
+        let prints = unsafe {
+            libfprint_sys::fp_device_list_prints_sync(
+                self.to_glib_none().0,
+                raw_cancel.cast(),
+                &mut error,
+            )
+        };
+
+        if prints.is_null() {
+            return Err(unsafe { glib::Error::from_glib_full(error.cast()) });
+        }
+
+        Ok(unsafe {
+            FromGlibPtrContainer::from_glib_container(prints.cast::<glib::ffi::GPtrArray>())
+        })
     }
     /// Clear sensor storage.
     pub fn clear_storage_sync() {

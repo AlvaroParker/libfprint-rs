@@ -3,17 +3,16 @@ use glib::{translate::ToGlibPtr, wrapper};
 use crate::FpDevice;
 
 wrapper! {
-    /// This struct allows you to discover fingerprint scanning hardware. This is the starting point when integrating libfprint-rs into your software.
+    /// Discovers connected fingerprint readers.
     pub struct FpContext(Object<libfprint_sys::FpContext, libfprint_sys::FpContextClass>);
     match fn {
         type_ => || libfprint_sys::fp_context_get_type() as usize,
     }
 }
 impl FpContext {
-    #[cfg(not(doctest))]
     /// Create a new `FpContext`
     /// # Examples:
-    /// ```rust
+    /// ```no_run
     /// use libfprint_rs::FpContext;
     ///
     /// let context = FpContext::new();
@@ -21,10 +20,9 @@ impl FpContext {
     pub fn new() -> Self {
         unsafe { glib::translate::from_glib_none(libfprint_sys::fp_context_new()) }
     }
-    #[cfg(not(doctest))]
     /// Get the list of devices connected to the system
     /// # Examples:
-    /// ```rust
+    /// ```no_run
     /// use libfprint_rs::FpContext;
     ///
     /// let context = FpContext::new();

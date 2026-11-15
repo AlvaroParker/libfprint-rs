@@ -1,0 +1,44 @@
+name: Rust tests
+
+on:
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check Rust bindings
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      FP_DRIVERS_ALLOWLIST: virtual_device:virtual_device_storage
+      RUSTDOCFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build pkg-config libglib2.0-dev libgusb-dev libclang-dev
+          rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+          rustup default 1.99.1
+      - name: Build libfprint with virtual devices
+        run: |
+          git clone https://gitlab.freedesktop.org/libfprint/libfprint.git /tmp/libfprint
+          git -C /tmp/libfprint checkout 8b6e4e39bee58de2774222e3730269def470b157
+          meson setup /tmp/libfprint/_build /tmp/libfprint --prefix=/usr --werror -Ddrivers=virtual_image,virtual_device,virtual_device_storage -Dintrospection=false -Ddoc=false -Dinstalled-tests=false -Dudev_rules=disabled -Dudev_hwdb=disabled
+          sudo meson install -C /tmp/libfprint/_build
+          sudo ldconfig
+      - run: cargo fmt --all -- --check
+      - run: cargo check --workspace --all-targets
+      - run: cargo test --workspace
+      - run: cargo clippy -p libfprint-rs --all-targets --no-deps -- -D warnings
+      - run: cargo doc --no-deps
