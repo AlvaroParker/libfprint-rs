@@ -1,14 +1,13 @@
-// All methods are declared
 use glib::{
     translate::{FromGlibContainer, FromGlibPtrFull, ToGlibPtr},
     wrapper,
 };
 
 wrapper! {
-#[cfg(not(doctest))]
-/// Struct representing an image of a fingerprint. Not all devices support this feature.
+/// An image captured by a fingerprint reader.
+/// Some devices can't capture images.
 /// # Examples:
-/// ```rust
+/// ```no_run
 /// use libfprint_rs::FpContext;
 /// use std::fs::File;
 /// use std::io::Write;
@@ -48,7 +47,8 @@ impl FpImage {
         unsafe { libfprint_sys::fp_image_get_height(self.to_glib_none().0) as u32 }
     }
 
-    /// Gets the resolution of the image. Note that this is assumed to be fixed to 500 points per inch (~19.685 p/mm) for most drivers.
+    /// Gets the resolution of the image.
+    /// Most drivers assume 500 points per inch, approximately 19.685 points per millimeter.
     pub fn ppmm(&self) -> f64 {
         unsafe { libfprint_sys::fp_image_get_ppmm(self.to_glib_none().0) }
     }

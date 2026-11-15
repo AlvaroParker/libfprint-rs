@@ -3,11 +3,9 @@
 //! This crate provides a wrapper around the libfprint library, which allows you to use fingerprint scanners in your Rust applications.
 //!
 //! # Enrolling a new fingerprint
-//! ```rust
+//! ```no_run
+//! # fn main() -> Result<(), libfprint_rs::GError> {
 //! use libfprint_rs::{FpContext, FpPrint};
-//!
-//! let context = FpContext::new();
-//! let devices = context.get_devices();
 //!
 //! let context = FpContext::new();
 //! let devices = context.devices();
@@ -19,29 +17,35 @@
 //! template.set_username("Bruce Banner");
 //!
 //! let print = dev.enroll_sync(template, None, None, None::<()>)?;
+//! # Ok(())
+//! # }
 //! ```
 //! # Verifying a fingerprint
-//! ```rust
+//! ```no_run
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! use libfprint_rs::{FpContext, FpPrint};
+//!
 //! let context = FpContext::new();
 //! let devices = context.devices();
 //!
 //! let dev = devices.get(0).unwrap();
 //! dev.open_sync(None)?;
 //!
-//! let enrolled_print = load_print_from_file();
+//! let data = std::fs::read("fingerprint")?;
+//! let enrolled_print = FpPrint::deserialize(&data)?;
 //!
-//! let match_res = dev.verify_sync(enrolled_print, None, None, None::<()>, None)?;
+//! let match_res = dev.verify_sync(&enrolled_print, None, None, None::<()>, None)?;
+//! # Ok(())
+//! # }
 //! ```
-//! For more examples on how to use this crate, please refer to the [github oficial repository](https://github.com/AlvaroParker/libfprint-rs)
-//! and the [documentation](https://docs.rs/libfprint-rs/latest/libfprint_rs/).
+//! More examples are available in the [GitHub repository](https://github.com/AlvaroParker/libfprint-rs) and the [API documentation](https://docs.rs/libfprint-rs/latest/libfprint_rs/).
 mod context;
 mod device;
 mod finger;
 mod image;
 mod print;
 
-/// Re-export `gio::Cancellable`, it provides a way to cancel sync operations, i.e
-/// `FpDevice::enroll_sync`
+/// Re-exports `gio::Cancellable` for cancelling synchronous operations.
 pub use gio::Cancellable;
 /// Re-export `glib::Error`, it provides a way to pass enroll dates to `FpPrint` metadata
 pub use glib::Date as GDate;
@@ -62,6 +66,7 @@ mod tests {
     use crate::{FpContext, FpDevice, FpPrint};
 
     #[test]
+    #[ignore = "requires a physical reader and interactive fingerprint enrollment"]
     fn get_names() {
         let ctx = FpContext::new();
         let devices = ctx.devices();
